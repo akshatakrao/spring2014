@@ -1,0 +1,9 @@
+Input from Console
+http://www.vectorsite.net/tscpp_3.html
+http://stackoverflow.com/questions/314401/how-to-read-a-line-from-the-console-in-c
+
+How does it work?
+https://blogs.oracle.com/janp/entry/how_the_scp_protocol_works
+
+
+
