@@ -1,0 +1,3 @@
+gcc -c encrypt.c `libgcrypt-config --cflags` -I .
+gcc -o encrypt encrypt.o `libgcrypt-config --libs`
+
