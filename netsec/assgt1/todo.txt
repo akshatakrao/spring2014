@@ -1,0 +1,21 @@
+1. Generate Key
+2. Encrypt Random File
+3. Decrypt File
+4. Take userinput for password, file, IP:Port
+5. Transfer encrypted file to IP:Port
+6. Receive encrypted file from IP:Port
+7. HMAC authentication attach
+8. HMAC authentication detach and check
+9. Network daemon
+10. Local file
+11. Makefile
+12. Killbee cluster
+13. Code comments
+
+Testing
+--------
+1. Invalid password
+2. Invalid file
+3. Invalid arguments
+4. Different types of files
+5. 
