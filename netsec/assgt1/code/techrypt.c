@@ -2,6 +2,8 @@
 #include<gcrypt.h>
 #include<encrypt.h>
 #include<errorcodes.h>
+#include<unistd.h>
+#include<techrypt.h>
 
 /*
 1. Stage 1  - Take a file and encrypt it 
@@ -10,7 +12,12 @@
 4. Stage 4 - Local mode
 */
 
-#define SYNTAX_MESSAGE "Syntax: techcrypt <input_file> [-d <IP:Port>] [-l]"
+#define SYNTAX_MESSAGE "\nSyntax: techcrypt <input_file> [-d <IP:Port>] [-l]\n"
+
+char* requestPassphrase();
+void remoteSecureCopy(FILE* file, char* ipPortString);
+void localSecureCopy(FILE* file);
+
 
 int main(int argc, char *argv[])
 {
@@ -18,30 +25,36 @@ int main(int argc, char *argv[])
     
     FILE *file;
 
-	  if(argc <= 3)
+	  if(argc < 3)
     {
-          printf("\nInsufficient arguments");
+          printf("\nInsufficient arguments\n");
           printf(SYNTAX_MESSAGE);
           exit(INVALID_SYNTAX);
     }
-    else if(((argc == 4) && (strcmp(argv[2],"-d") != 0)) && ((argc == 3) && (strcmp(argv[3],"-l") != 0)))
+    else if((argc == 4) && (strcmp(argv[2],"-d") != 0))
     {
-           printf("\nIncorrect Syntax");
+           printf("\nIncorrect Syntax1");
+           printf(SYNTAX_MESSAGE);
+           exit(INVALID_SYNTAX);
+    }
+    else if((argc == 3) && (strcmp(argv[2],"-l") != 0))
+    {
+           printf("\nIncorrect Syntax2");
            printf(SYNTAX_MESSAGE);
            exit(INVALID_SYNTAX);
     }
 
     filePath = argv[1];
 
-    if(access( filePath, F_OK) != -1)
+    if(access( filePath, F_OK) != 0)
     {
        fprintf(stderr, "Invalid File Path");
        exit(INVALID_FILE);
     }
     
-    file = fopen(filePath, "r, ccs=UTF-8");
-  
+    file = fopen(filePath, "r, ccs=UTF-8"); 
     
+    commandLineOption = argv[2];
     if(strcmp(commandLineOption,"-d") == 0)
     {
       ipPortString = argv[3];
@@ -49,7 +62,7 @@ int main(int argc, char *argv[])
     }
     else if(strcmp(commandLineOption, "-l") == 0)
     {
-      localSecureCopy(file, ipPortString);
+      localSecureCopy(file);
     }
     else
     {
@@ -61,29 +74,42 @@ int main(int argc, char *argv[])
 }
 
 /**
- *
+ *Request Passphrase
+ */
+char* requestPassphrase()
+{
+  char* password = malloc(sizeof(char) * PASSWORD_SIZE);
+  printf("Enter passphrase: ");
+  fgets(password, PASSWORD_SIZE, stdin);
+
+  return password; 
+}
+
+/**
+ * Remote Secure Copy
  */
 void remoteSecureCopy(FILE* file, char* ipPortString)
 {
+  char* passphrase;
+  //TODO: Check if IP and Port are Valid
+
+  passphrase = requestPassphrase();
+
+  //Create an encrypted temp file
+  //Create a socket connection
+  //Copy the file 
 
 }
 
 /**
- *
+ * Local Copy
  */
-void localSecureCopy(FILE* file)
+void localSecureCopy(FILE *file)
 {
-
-
-}
-
-
-
-
-/**
-Prints the syntax for the techrypt command	
-*/
-void printSyntax()
-{
-
+  const char* passphrase;
+  passphrase = requestPassphrase();
+  
+  
+  //Check if output file already exists
+  //Create encrypted File
 }
