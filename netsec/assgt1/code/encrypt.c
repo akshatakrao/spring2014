@@ -5,76 +5,6 @@
 #include<stdint.h>
 #include<string.h>
 
-/**
-* encrypt_file_inpath
-*
-**/
-void encrypt_file_inpath(char* filePath, const char* pwd)
-{
-	//TODO: Validate if file exists and if filepath is valid
-	
-	FILE* f = fopen(filePath, "r, ccs=UTF-8");
-	
-	if(!f)
-	{
-		fprintf(stderr, "\nUnable to create new file");
-	}
-
-	encrypt_file(f, pwd);
-
-	//TODO: Error Checking
-	fclose(f);
-
-	return;
-}
-
-/**
-* encrypt_file
-*
-**/
-void encrypt_file(FILE* file, const char* pwd)
-{
-	gcry_cipher_hd_t handle;
-	gcry_error_t crypt_err;
-	gpg_error_t keygen_err;
-	uint8_t keybuffer[KEY_SIZE];
-	char* fileContents;
-	char* encryptedContents;
-	
-
-	fileContents = readFileIntoString(file);
-	//TODO: Test fileContents for empty or invalid
-
-
-
-	crypt_err = gcry_cipher_open(&handle, ENCRYPTION_ALGO, ENCRYPTION_MODE, GCRY_CIPHER_SECURE);
-	//TODO: Perform error checking      
-	
-        generate_key(pwd, keybuffer);
-	//TODO: Error checking
-	
-	crypt_err = gcry_cipher_setkey(handle, (const void *)&keybuffer[0],KEY_SIZE);
-	//TODO: Error checking
-
-
-	gcry_cipher_encrypt(handle, encryptedContents, strlen(encryptedContents), 
-	
-/*	gcry_cipher_encrypt(handle,  
-
-	
-
-
-	
-	crypt_err = gcry_cipher_close(handle);
-	//TODO: Perform error checking
-	wint_t c;
-
-	for ( c; (c=fgetwc(file)) != WEOF;)
-		printf("%c",c);	
-	return;
-*/
-}
-
 
 /**
 *  init_gcrypt - Initializes the GCrypt library
@@ -112,32 +42,6 @@ void init_gcrypt()
 
 }
 
-/**
-Clean up
-**/
-void finalize_gcrypt()
-{
-	gcry_control(GCRYCTL_SUSPEND_SECMEM_WARN);
-
-	//Zeroises the secure memeory and destroys the handler	
-	gcry_control(GCRYCTL_TERM_SECMEM);
-
-	gcry_control(GCRYCTL_RESUME_SECMEM_WARN);
-
-
-}
-int main()
-{
-	char* path="test.txt";
-	uint8_t keybuffer[KEY_SIZE];
-
-	generate_key("whatsup", keybuffer);
-	
-	printf("%s ", readFileIntoString(path));
-	//encrypt_file_inpath(path,"");
-	
-}
-
 
 /**
 * Generate Key
@@ -161,20 +65,13 @@ void generate_key(const char* passphrase, uint8_t keybuffer[])
 	}
 }
 
-
 /**
+*
 **/
-char* readFileIntoString(char* filepath)
+char* readFileIntoString(FILE* file)
 {
-	FILE* file = fopen(filepath, "r, ccs=UTF-8");
 	long int size = ftell(file);	
 	char* fileString;
-
-	if(file == NULL)
-	{
-		fprintf(stderr, "\nThe file path is invalid");
-		exit(INVALID_FILE);		
-	} 
 
 	fseek(file, 0, SEEK_END);
 	size = ftell(file);
@@ -185,3 +82,199 @@ char* readFileIntoString(char* filepath)
 
 	return fileString;	
 }
+
+
+/**
+* encrypt_file_inpath
+*
+**/
+void encrypt_file_inpath(char* filePath, const char* pwd)
+{
+	//TODO: Validate if file exists and if filepath is valid
+	
+	FILE* f = fopen(filePath, "r, ccs=UTF-8");
+	
+	if(!f)
+	{
+		fprintf(stderr, "\nUnable to create new file");
+	}
+
+	encrypt_file(f, pwd);
+
+	//TODO: Error Checking
+	fclose(f);
+
+	return;
+}
+
+/**
+ * Get File Size as a multiple of block size
+ * **/
+long getFileEncryptedLength(long fileLength)
+{
+
+   //TODO: Replace with block size/KEY SIze 
+	if(fileLength < 16)
+		fileLength = 16;
+	else
+	{
+		fileLength = fileLength%16 + fileLength;
+	}
+	
+	printf("\nFile length : %ld ", fileLength);
+
+  return fileLength;
+}
+
+/**
+ * Get File Size
+ */
+long getFileSize(FILE* file)
+{
+  long size;
+  fseek(file, 0L, SEEK_END);
+  size = ftell(file);
+  fseek(file, 0L, SEEK_SET);
+
+  return size;
+}
+
+/**
+* Encrypt String
+*
+**/
+char* encryptString(char* inputString, long contentSize, const char* pwd)
+{
+  
+  char* encryptedContents = NULL;
+  gcry_cipher_hd_t handle;
+  gcry_error_t crypt_err;
+  gpg_error_t keygen_err;
+  uint8_t keybuffer[KEY_SIZE];
+  int errorCode;
+  char* macString;
+
+  crypt_err = gcry_cipher_open(&handle, ENCRYPTION_ALGO, ENCRYPTION_MODE, GCRY_CIPHER_SECURE);
+  //TODO: Perform error checking      
+	
+  generate_key(pwd, keybuffer);
+  //TODO: Error checking
+	
+  crypt_err = gcry_cipher_setkey(handle, (const void *)&keybuffer[0],KEY_SIZE);
+  //TODO: Error checking
+
+  //to accomodate the macString
+  encryptedContents = (char *)malloc(contentSize + 64);
+
+  gcry_cipher_setiv(handle, &IV, 16);   
+  
+  errorCode = gcry_cipher_encrypt(handle, encryptedContents, contentSize + 64, inputString, contentSize);
+
+  if(errorCode)
+  {
+	fprintf(stderr, "Failed to encrypt file: %s %s\n", gcry_strsource(errorCode), gcry_strerror(errorCode));
+	exit(ENCRYPTION_FAILED);
+  }
+ 
+  macString = generateHMAC(encryptedContents, keybuffer);
+  printf("\nMAC LENGTH: %d " , strlen(macString));
+  printf("\nLength of Encrypted Content: %d", strlen(encryptedContents));
+
+  strcat(encryptedContents, macString);
+
+  return encryptedContents;  
+}
+
+/**
+* encrypt_file
+*
+**/
+void encrypt_file(FILE* file, const char* pwd)
+{
+  char *fileContents = NULL, *encryptedContents = NULL;
+  int errorCode;
+  long size, contentSize;
+
+  size = getFileSize(file);
+  contentSize = getFileEncryptedLength(size);
+  fileContents = malloc(contentSize);
+  fileContents = readFileIntoString(file);
+  //TODO: Test fileContents for empty or invalid
+
+  printf("\nBefore Encryption: %s", fileContents);
+  encryptedContents = encryptString(fileContents, contentSize, pwd);
+  printf("\nAfter Encryption: %s", encryptedContents); 
+  
+}
+
+
+/**
+Clean up
+**/
+void finalize_gcrypt()
+{
+	gcry_control(GCRYCTL_SUSPEND_SECMEM_WARN);
+
+	//Zeroises the secure memeory and destroys the handler	
+	gcry_control(GCRYCTL_TERM_SECMEM);
+
+	gcry_control(GCRYCTL_RESUME_SECMEM_WARN);
+
+
+}
+
+/**
+ *
+ */
+char* generateHMAC(char* inputString, uint8_t keybuffer[])
+{
+  gcry_error_t err;
+  gcry_mac_hd_t handle;
+  char* macString, *macString2;
+  size_t mac_length = MAC_SIZE;
+
+  err = gcry_mac_open(&handle, GCRY_MAC_HMAC_SHA512, GCRY_MAC_FLAG_SECURE, NULL);
+  //TODO: Catch error
+
+  err = gcry_mac_setkey(handle, (const void *)&keybuffer[0], KEY_SIZE);
+  //TODO: Catch error
+
+  err = gcry_mac_write(handle, (void *)inputString, strlen(inputString));
+  //TODO: Catch Error
+
+  macString = malloc(MAC_SIZE + 1);
+  macString[MAC_SIZE] = '\0';
+
+  err = gcry_mac_read(handle, (void *)macString, &mac_length); 
+  
+  printf("\nMAC: %s", macString);
+  printf("\nMAC Length: %d", mac_length);
+
+  gcry_mac_close(handle);
+ 
+  return macString; 
+}
+
+
+void encryptFile()
+{
+	const char* password = "trial";
+	char* filepath = "test.txt";
+	init_gcrypt();
+	encrypt_file_inpath(filepath, password);
+	finalize_gcrypt();
+
+}
+
+/**
+Start Function
+**/
+
+int main()
+{
+	
+	encryptFile();
+
+}
+
+
