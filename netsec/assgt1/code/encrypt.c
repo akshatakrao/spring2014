@@ -12,7 +12,7 @@
 **/
 char* readFileIntoString(FILE* file)
 {
-	long int size = ftell(file);	
+	long int size;	
 	char* fileString;
 
 	fseek(file, 0, SEEK_END);
@@ -50,25 +50,6 @@ void encrypt_file_inpath(char* filePath, const char* pwd)
 }
 
 /**
- * Get File Size as a multiple of block size
- * **/
-long getFileEncryptedLength(long fileLength)
-{
-
-   //TODO: Replace with block size/KEY SIze 
-	if(fileLength < 16)
-		fileLength = 16;
-	else
-	{
-		fileLength = fileLength%16 + fileLength;
-	}
-	
-	printf("\nFile length : %ld ", fileLength);
-
-  return fileLength;
-}
-
-/**
  * Get File Size
  */
 long getFileSize(FILE* file)
@@ -96,9 +77,12 @@ char* encryptString(char* inputString, long contentSize, const char* pwd)
   int errorCode;
   char* macString;
 
+
   crypt_err = gcry_cipher_open(&handle, ENCRYPTION_ALGO, ENCRYPTION_MODE, GCRY_CIPHER_SECURE);
   //TODO: Perform error checking      
 	
+  memset(keybuffer,0x0,sizeof(keybuffer));
+
   generate_key(pwd, keybuffer);
   //TODO: Error checking
 	
@@ -106,11 +90,13 @@ char* encryptString(char* inputString, long contentSize, const char* pwd)
   //TODO: Error checking
 
   //to accomodate the macString
-  encryptedContents = (char *)malloc(contentSize + 64);
+  contentSize = contentSize + MAC_SIZE;
+
+  encryptedContents = (char *)malloc(contentSize);
 
   gcry_cipher_setiv(handle, &IV, 16);   
   
-  errorCode = gcry_cipher_encrypt(handle, encryptedContents, contentSize + 64, inputString, contentSize);
+  errorCode = gcry_cipher_encrypt(handle, encryptedContents, contentSize, inputString, contentSize);
 
   if(errorCode)
   {
@@ -119,7 +105,7 @@ char* encryptString(char* inputString, long contentSize, const char* pwd)
   }
  
   macString = generateHMAC(encryptedContents, keybuffer);
-  printf("\nMAC LENGTH: %d " , strlen(macString));
+  printf("\n MAC: %s", macString);
   printf("\nLength of Encrypted Content: %d", strlen(encryptedContents));
 
   strcat(encryptedContents, macString);
@@ -131,7 +117,7 @@ char* encryptString(char* inputString, long contentSize, const char* pwd)
 * encrypt_file
 *
 **/
-void encrypt_file(FILE* file, const char* pwd)
+char* encrypt_file(FILE* file, const char* pwd)
 {
   char *fileContents = NULL, *encryptedContents = NULL;
   int errorCode;
@@ -143,14 +129,15 @@ void encrypt_file(FILE* file, const char* pwd)
   fileContents = readFileIntoString(file);
   //TODO: Test fileContents for empty or invalid
 
-  printf("\nBefore Encryption: %s", fileContents);
   encryptedContents = encryptString(fileContents, contentSize, pwd);
-  printf("\nAfter Encryption: %s", encryptedContents); 
   
+  return encryptedContents;
 }
 
 
-
+/**
+ *Test Function
+ */
 void encryptFile()
 {
 	const char* password = "trial";
@@ -160,16 +147,4 @@ void encryptFile()
 	finalize_gcrypt();
 
 }
-
-/**
-Start Function
-**/
-
-int main()
-{
-	
-	encryptFile();
-
-}
-
 

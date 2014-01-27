@@ -48,18 +48,20 @@ void generate_key(const char* passphrase, uint8_t keybuffer[])
 	gcry_error_t err;
 	int i = 0;
 	
-	err = gcry_kdf_derive(passphrase, strlen(passphrase), KEY_ALGO, KEY_HASH_ALGO, KEY_SALT, strlen(KEY_SALT),NUMBER_OF_ITERATIONS ,sizeof(keybuffer), (void *)&keybuffer[0]);
+	err = gcry_kdf_derive("abcdefgh", strlen("abcdefgh"), KEY_ALGO, KEY_HASH_ALGO, KEY_SALT, strlen(KEY_SALT),NUMBER_OF_ITERATIONS ,sizeof(keybuffer), (void *)&keybuffer[0]);
  
 	if(0 != err)
 	{
 		fprintf(stderr, "\nKey derivation failed due to %s", gcry_strerror(err));
 	//	return -1;
 	}
-	
+
+  printf("\nKey: ");  
 	for(i = 0; i < KEY_SIZE; i++)
 	{
 		printf("%x ",keybuffer[i]);
 	}
+  printf("\n");
 }
 
 
@@ -110,4 +112,34 @@ char* generateHMAC(char* inputString, uint8_t keybuffer[])
   return macString; 
 }
 
+/**
+ *Request Passphrase
+ */
+char* requestPassphrase()
+{
+  char* password = malloc(sizeof(char) * PASSWORD_SIZE);
+  printf("Enter passphrase: ");
+  fgets(password, PASSWORD_SIZE, stdin);
+
+  return password; 
+}
+
+/**
+ * Get File Size as a multiple of block size
+ * **/
+static long getFileEncryptedLength(long fileLength)
+{
+
+   //TODO: Replace with block size/KEY SIze 
+	if(fileLength < KEY_SIZE)
+		fileLength = KEY_SIZE;
+	else
+	{
+		fileLength = fileLength%KEY_SIZE + fileLength;
+	}
+	
+	printf("\nFile length : %ld ", fileLength);
+
+  return fileLength;
+}
 

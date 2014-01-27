@@ -3,11 +3,10 @@
 #endif
 
 //Encryption Constants
-#define ENCRYPTION_ALGO GCRY_CIPHER_AES128
-#define ENCRYPTION_MODE GCRY_CIPHER_MODE_CBC
+
 
 char* readFileIntoString(FILE* file);
 char* encryptString(char* inputString, long contentSize, const char* pwd);
 void encrypt_file_inpath(char* filepath, const char* password);
-void encrypt_file(FILE* file, const char* password);
+char* encrypt_file(FILE* file, const char* password);
 void encryptFile();

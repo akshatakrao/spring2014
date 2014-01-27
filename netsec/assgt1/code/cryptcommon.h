@@ -11,6 +11,9 @@
 #define KEY_SALT "NaCl"
 #define KEY_SIZE 16
 #define MAC_SIZE 64
+#define ENCRYPTION_ALGO GCRY_CIPHER_AES128
+#define ENCRYPTION_MODE GCRY_CIPHER_MODE_CBC
+#define PASSWORD_SIZE 15
 
 static int IV = 5844;
 
@@ -18,5 +21,8 @@ void init_gcrypt();
 void generate_key(const char* password,  uint8_t keybuffer[]);
 char* generateHMAC(char* inputString, uint8_t keybuffer[]);
 void finalize_gcrypt();
+char* requestPassphrase();
+static long getFileEncryptedLength(long fileLength);
+
 
 

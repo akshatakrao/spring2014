@@ -4,6 +4,7 @@
 #include<errorcodes.h>
 #include<unistd.h>
 #include<techrypt.h>
+#include<cryptcommon.h>
 
 /*
 1. Stage 1  - Take a file and encrypt it 
@@ -14,16 +15,11 @@
 
 #define SYNTAX_MESSAGE "\nSyntax: techcrypt <input_file> [-d <IP:Port>] [-l]\n"
 
-char* requestPassphrase();
-void remoteSecureCopy(FILE* file, char* ipPortString);
-void localSecureCopy(FILE* file);
-
 
 int main(int argc, char *argv[])
 {
     char *filePath, *commandLineOption, *ipPortString;
-    
-    FILE *file;
+    char* destinationFilePath;
 
 	  if(argc < 3)
     {
@@ -45,56 +41,78 @@ int main(int argc, char *argv[])
     }
 
     filePath = argv[1];
-
-    if(access( filePath, F_OK) != 0)
-    {
-       fprintf(stderr, "Invalid File Path");
-       exit(INVALID_FILE);
-    }
-    
-    file = fopen(filePath, "r, ccs=UTF-8"); 
-    
     commandLineOption = argv[2];
-    if(strcmp(commandLineOption,"-d") == 0)
+
+    if(argc ==  4)
     {
-      ipPortString = argv[3];
-      remoteSecureCopy(file, ipPortString);  
+        ipPortString = argv[3];
     }
-    else if(strcmp(commandLineOption, "-l") == 0)
-    {
-      localSecureCopy(file);
-    }
-    else
-    {
-      fprintf(stderr, "Invalid syntax");
-      printf(SYNTAX_MESSAGE);
-      exit(INVALID_SYNTAX);
-    }
-       
+
+    makeCopy(commandLineOption, filePath, ipPortString); 
 }
 
 /**
- *Request Passphrase
+ * Make Copy
  */
-char* requestPassphrase()
+void makeCopy(char* commandLineOption, char* filePath, char* ipPortString)
 {
-  char* password = malloc(sizeof(char) * PASSWORD_SIZE);
-  printf("Enter passphrase: ");
-  fgets(password, PASSWORD_SIZE, stdin);
+  const char* passphrase;
+  char* encryptedContents;
+   
+  if(access(filePath, F_OK) != 0)
+  {
+       fprintf(stderr, "Invalid File Path");
+       exit(INVALID_FILE);
+  }
+    
+  FILE *file = fopen(filePath, "r, ccs=UTF-8"); 
+ 
+  passphrase = requestPassphrase();
+  encryptedContents = encrypt_file(file, passphrase); 
 
-  return password; 
+  printf("\nEncryptedContents : %s", encryptedContents);
+
+  if(strcmp(commandLineOption,"-d") == 0)
+  {
+      remoteSecureCopy(file, ipPortString, encryptedContents);  
+  }
+  else if(strcmp(commandLineOption, "-l") == 0)
+  {
+      localSecureCopy(file, filePath, encryptedContents);
+  }
+  else
+  {
+      fprintf(stderr, "\nInvalid syntax");
+      printf(SYNTAX_MESSAGE);
+      exit(INVALID_SYNTAX);
+  }
+
+
 }
+
+/**
+ *
+ */
+char* getDestinationFilePath(char* filePath)
+{
+    char *destinationFilePath = malloc(strlen(filePath) + 3);
+    strcpy(destinationFilePath, filePath);
+    strcat(destinationFilePath, ".gt");
+
+    printf("\nDestinationFilePath: %s", destinationFilePath);
+    printf("\nOriginal file path: %s", filePath);
+  
+    return destinationFilePath;
+
+}
+
 
 /**
  * Remote Secure Copy
  */
-void remoteSecureCopy(FILE* file, char* ipPortString)
+void remoteSecureCopy(FILE* file, char* ipPortString, char* encryptedContents)
 {
-  char* passphrase;
   //TODO: Check if IP and Port are Valid
-
-  passphrase = requestPassphrase();
-
   //Create an encrypted temp file
   //Create a socket connection
   //Copy the file 
@@ -104,12 +122,35 @@ void remoteSecureCopy(FILE* file, char* ipPortString)
 /**
  * Local Copy
  */
-void localSecureCopy(FILE *file)
+void localSecureCopy(FILE *inputFile, char* filePath, char* encryptedContents)
 {
-  const char* passphrase;
-  passphrase = requestPassphrase();
-  
-  
-  //Check if output file already exists
-  //Create encrypted File
+    //Generate destination File Path
+    //TODO: Test for complete filepaths 
+    char* destinationFilePath = getDestinationFilePath(filePath);
+    FILE* outputFile;
+
+    if(access(destinationFilePath, F_OK) == 0)
+    {
+       fprintf(stderr, "Output File Already Exists!");
+       exit(OUTPUT_FILE_EXISTS);
+    }
+    else
+    {
+      outputFile = fopen(destinationFilePath, "w");  
+      writeToFile(outputFile, encryptedContents);
+    }
 }
+
+/**
+ *Write to File
+ */
+void writeToFile(FILE* file, char* encryptNMACContents)
+{
+  size_t len = 0;
+  
+  len = strlen(encryptNMACContents);
+  fwrite(encryptNMACContents, len, 1, file);
+  fclose(file);
+} 
+
+
