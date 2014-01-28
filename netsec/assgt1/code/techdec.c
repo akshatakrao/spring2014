@@ -5,6 +5,7 @@
 #include<stdlib.h>
 #include<string.h>
 #include<cryptcommon.h>
+#include<gcrypt.h>
 
 //READ MAC FROM DECRYPTED FILE
 //READ ENCRYPTED STRING FROM FILE
@@ -44,24 +45,6 @@ char* getDestinationFilePath(char* inputFilePath)
     //Extract the substring
 }
 
-/**
- * Extract MAC from File
- */
-char* extractMACFromFile(char* filePath)
-{
-    char* mac;
-	  long int size;	
-
-    FILE *file = fopen(filePath, "r");
-
-    fseek(file, -64L, SEEK_END);
-
-    mac = malloc(64);
-	  fread(mac, 1, 64, file);
-
-    return mac;
-}
-
 long getSizeOfEncryptedContent(FILE* file)
 {
     long size;
@@ -72,6 +55,29 @@ long getSizeOfEncryptedContent(FILE* file)
 
     return size;
 }
+
+
+/**
+ * Extract MAC from File
+ */
+void extractMACFromFile(char* filePath, char mac[])
+{
+	  long int size;
+    int i = 0;
+    char c = 0;  
+
+    FILE *file = fopen(filePath, "r");
+    size = getSizeOfEncryptedContent(file);
+    fseek(file, -64, SEEK_END);
+
+    for(i = 0; i < 64; i++)
+    {
+        mac[i] = fgetc(file);
+    }
+
+   // return &mac[0];
+}
+
 /**
  * Extract Encrypted String
  */
@@ -82,11 +88,10 @@ char* extractEncryptedStringFromFile(char* filePath)
 
     FILE *file = fopen(filePath, "r");
 
-    size = getSizeOfEncryptedContent(file);    
+    size = getSizeOfEncryptedContent(file);   
     encryptedContents = malloc(size - 64);
     fread(encryptedContents, 1, size-64, file);
-    
-    printf("\nLength of encryptedContents: %d", strlen(encryptedContents)); 
+   
     return encryptedContents;
 }
 
@@ -95,7 +100,7 @@ char* extractEncryptedStringFromFile(char* filePath)
  */
 int verifyMAC(char* encryptedContents, char* mac, char* passphrase)
 {
-    int macVerified = 1;
+    int macVerified = 1, i = 0;
     char* generatedMAC;
 
     uint8_t keybuffer[KEY_SIZE];
@@ -106,53 +111,118 @@ int verifyMAC(char* encryptedContents, char* mac, char* passphrase)
 
     generatedMAC = generateHMAC(encryptedContents, keybuffer);
 
-    if(strcmp(mac, generatedMAC) != 0)
+    printf("\nMAC1: %s", mac);
+    printf("\nMAC2: %s", generatedMAC);
+
+    for(i = 0; i < 64; i ++)
     {
-        macVerified = 0;
+      if(mac[i] != generatedMAC[i])
+      {
+          printf("\nNot same: %d", i);
+          macVerified = 0;
+          break;
+      }
+
     }
 
     return macVerified;
 }
+
+
+/**
+*
+**/
+char* readFileIntoString(FILE* file)
+{
+	long int size;	
+	char* fileString;
+
+	fseek(file, 0, SEEK_END);
+	size = ftell(file);
+	rewind(file);
+
+	fileString = calloc(size + 1, 1);
+	fread(fileString, 1, size, file);
+
+	return fileString;	
+}
+
 
 /**
  *
  */
 void localDecrypt(char* filePath, char* passphrase)
 {
-    char* mac, *encryptedContents, *destinationFilePath, *decryptedContents;
-    FILE* file;
+    char *encryptedContents, *encryptedContents2, *destinationFilePath, *decryptedContents,*generatedMAC;
     long size;
+    FILE* file, *outputFile;
+    int i = 0, same = 1;
+    uint8_t keybuffer[KEY_SIZE];
+    char mac[MAC_SIZE];
 
     if(access(filePath, F_OK) != 0)
     {
        fprintf(stderr, "Input file does not exist!");
        exit(INVALID_FILE);
     }
-  
-    mac = extractMACFromFile(filePath);
-    printf("MAC: %s", mac);
+ 
+     
+    extractMACFromFile(filePath, mac);
+//    printf("\nMAC: %s Count: %d", mac, strlen(mac));
+   
+
     encryptedContents = extractEncryptedStringFromFile(filePath);
-    printf("\nEncryptedContents: %s", encryptedContents);
+  //  printf("\nEncryptedContents: %s", encryptedContents);
 
     file = fopen(filePath, "r");
 
-    size = getSizeOfEncryptedContent(file);
+    size = strlen(encryptedContents);
 
     decryptedContents = decryptContents(encryptedContents, size, passphrase);
-    printf("Decrypted Contents: %s", decryptedContents);
 
-    if(!verifyMAC(encryptedContents, mac, passphrase))
+    memset(keybuffer,0x0,sizeof(keybuffer));
+
+    printf("Passphrase1: %s", passphrase); 
+    generate_key(passphrase, keybuffer);
+
+    generatedMAC = generateHMAC(encryptedContents, keybuffer);
+  //  printf("\nGenerated MAC: %s %d", generatedMAC, strlen(generatedMAC));
+
+
+    for(i = 0; i < MAC_SIZE; i++)
     {
-        fprintf(stderr, "\nThe MAC does not verify for the encrypted file");
-        exit(INVALID_MAC);
+        if(generatedMAC[i] != mac[i])
+        {
+    //        printf("Not same: %d", i);
+            same = 0;
+            break;
+        }
+    }
+
+    if(same)
+    {
+        printf("\nMAC verified\n");
     }
     else
     {
-        printf("\nMAC verified");
+        fprintf(stderr, "\nThe MAC does not verify for the encrypted file");
+        exit(INVALID_MAC);
+
     }
 
+    //strcpy(destinationFilePath, filePath);
+    //strcat(destinationFilePath, ".dec"); 
 
-   destinationFilePath =  getDestinationFilePath(filePath);
+    destinationFilePath = "output.txt";
+
+    if(access(destinationFilePath, F_OK) == 0)
+    {
+       fprintf(stderr, "\nOutput File Already Exists!");
+       exit(OUTPUT_FILE_EXISTS);
+    }
+
+    outputFile = fopen(destinationFilePath,"w");
+    fwrite(decryptedContents, strlen(decryptedContents), 1, outputFile);
 
 }
 

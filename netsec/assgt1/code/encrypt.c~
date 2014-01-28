@@ -12,7 +12,7 @@
 **/
 char* readFileIntoString(FILE* file)
 {
-	long int size;	
+	long int size = ftell(file);	
 	char* fileString;
 
 	fseek(file, 0, SEEK_END);
@@ -22,7 +22,6 @@ char* readFileIntoString(FILE* file)
 	fileString = calloc(size + 1, 1);
 	fread(fileString, 1, size, file);
 
-  printf("File String read: %s", fileString);
 	return fileString;	
 }
 
@@ -48,6 +47,25 @@ void encrypt_file_inpath(char* filePath, const char* pwd)
 	fclose(f);
 
 	return;
+}
+
+/**
+ * Get File Size as a multiple of block size
+ * **/
+long getFileEncryptedLength(long fileLength)
+{
+
+   //TODO: Replace with block size/KEY SIze 
+	if(fileLength < 16)
+		fileLength = 16;
+	else
+	{
+		fileLength = fileLength%16 + fileLength;
+	}
+	
+	printf("\nFile length : %ld ", fileLength);
+
+  return fileLength;
 }
 
 /**
@@ -78,12 +96,9 @@ char* encryptString(char* inputString, long contentSize, const char* pwd)
   int errorCode;
   char* macString;
 
-
   crypt_err = gcry_cipher_open(&handle, ENCRYPTION_ALGO, ENCRYPTION_MODE, GCRY_CIPHER_SECURE);
   //TODO: Perform error checking      
 	
-  memset(keybuffer,0x0,sizeof(keybuffer));
-
   generate_key(pwd, keybuffer);
   //TODO: Error checking
 	
@@ -91,81 +106,51 @@ char* encryptString(char* inputString, long contentSize, const char* pwd)
   //TODO: Error checking
 
   //to accomodate the macString
-  contentSize = contentSize + MAC_SIZE;
+  encryptedContents = (char *)malloc(contentSize + 64);
 
-  encryptedContents = (char *)malloc(contentSize);
-
-  gcry_cipher_setiv(handle, &IV[0], 16);   
+  gcry_cipher_setiv(handle, &IV, 16);   
   
-  errorCode = gcry_cipher_encrypt(handle, encryptedContents, contentSize, inputString, contentSize);
+  errorCode = gcry_cipher_encrypt(handle, encryptedContents, contentSize + 64, inputString, contentSize);
 
   if(errorCode)
   {
-  	fprintf(stderr, "Failed to encrypt file: %s %s\n", gcry_strsource(errorCode), gcry_strerror(errorCode));
-	  exit(ENCRYPTION_FAILED);
+	fprintf(stderr, "Failed to encrypt file: %s %s\n", gcry_strsource(errorCode), gcry_strerror(errorCode));
+	exit(ENCRYPTION_FAILED);
   }
-
-  printf("\nEncrypted Contents: %s", encryptedContents); 
+ 
   macString = generateHMAC(encryptedContents, keybuffer);
-  
+  printf("\nMAC LENGTH: %d " , strlen(macString));
+  printf("\nLength of Encrypted Content: %d", strlen(encryptedContents));
+
   strcat(encryptedContents, macString);
-  printf("\nEncrypted Content after MAC: %s", encryptedContents);
 
   return encryptedContents;  
-}
-
-long getFileEncryptedLength2(long fileLength)
-{
-
-  printf("\nOriginal File Length: %ld", fileLength);
-   //TODO: Replace with block size/KEY SIze 
-	if(fileLength < KEY_SIZE)
-		fileLength = KEY_SIZE;
-	else
-	{
-    printf("\nFile Length Remainder: %d", fileLength%KEY_SIZE); 
-
-      
-		fileLength = KEY_SIZE + ((fileLength/KEY_SIZE) * KEY_SIZE);
-	}
-	
-	printf("\nFile length : %ld ", fileLength);
-
-  return fileLength;
 }
 
 /**
 * encrypt_file
 *
 **/
-char* encrypt_file(FILE* file, const char* pwd)
+void encrypt_file(FILE* file, const char* pwd)
 {
   char *fileContents = NULL, *encryptedContents = NULL;
-  int errorCode, i = 0;
+  int errorCode;
   long size, contentSize;
 
   size = getFileSize(file);
-  contentSize = getFileEncryptedLength2(size);
+  contentSize = getFileEncryptedLength(size);
   fileContents = malloc(contentSize);
   fileContents = readFileIntoString(file);
   //TODO: Test fileContents for empty or invalid
 
-  for (i = 0; i < strlen(fileContents); i++)
-  {
-      printf("%02X ", fileContents[i]);
-  }
-
-  printf("\nCount: %d\n", i);
-  
+  printf("\nBefore Encryption: %s", fileContents);
   encryptedContents = encryptString(fileContents, contentSize, pwd);
+  printf("\nAfter Encryption: %s", encryptedContents); 
   
-  return encryptedContents;
 }
 
 
-/**
- *Test Function
- */
+
 void encryptFile()
 {
 	const char* password = "trial";
@@ -175,4 +160,16 @@ void encryptFile()
 	finalize_gcrypt();
 
 }
+
+/**
+Start Function
+**/
+
+int main()
+{
+	
+	encryptFile();
+
+}
+
 

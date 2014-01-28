@@ -1,0 +1,52 @@
+#include<gcrypt.h>
+
+
+void decryptContents(char* encryptedString, const char* password)
+{
+  gcry_cipher_hd_t handle;
+  gcry_error_t crypt_err;
+  gpg_error_t keygen_err;
+  uint8_t keybuffer[KEY_SIZE];
+  int errorCode;
+  char* decryptedContents;
+  int sizeOfDecryptedContents = strlen(encryptedString);	
+  //TODO: Test for empty string
+
+  crypt_err = gcry_cipher_open(&handle, ENCRYPTION_ALGO, ENCRYPTION_MODE, GCRY_CIPHER_SECURE);
+  //TODO: Perform error checking      
+	
+  generate_key(pwd, keybuffer);
+  //TODO: Error checking
+	
+  crypt_err = gcry_cipher_setkey(handle, (const void *)&keybuffer[0],KEY_SIZE);
+  //TODO: Error checking
+
+  decryptedContents = (char *)malloc(strlen(sizeOfDecryptedContents));
+
+  gcry_cipher_setiv(handle, &IV, 16);   
+  
+  errorCode = gcry_cipher_decrypt(handle, decryptedContents, contentSize, encryptedString, sizeOfDecryptedContents);
+
+  if(errorCode)
+  {
+	fprintf(stderr, "Failed to encrypt file: %s %s\n", gcry_strsource(errorCode), gcry_strerror(errorCode));
+	exit(ENCRYPTION_FAILED);
+  }
+
+	
+ 
+
+}
+
+void decryptFile()
+{
+	const char* password = "trial";
+	char* filepath = "test.txt";
+	init_gcrypt();
+	decrypt_file_inpath(filepath, password);
+	finalize_gcrypt();
+}
+
+
+
+

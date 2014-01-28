@@ -6,7 +6,23 @@
 /**
  *Decrypt encrypted string
  */
-char* decryptContents(char* encryptedString, long fileSize, const char* password)
+
+static long getFileEncryptedLength(long fileLength)
+{
+
+   //TODO: Replace with block size/KEY SIze 
+	if(fileLength < KEY_SIZE)
+		fileLength = KEY_SIZE;
+	else
+	{
+		fileLength = KEY_SIZE + ((fileLength/KEY_SIZE)*KEY_SIZE);
+	}
+	
+
+  return fileLength;
+}
+
+char* decryptContents(char* encryptedString,  const char* password)
 {
   gcry_cipher_hd_t handle;
   gcry_error_t crypt_err;
@@ -14,7 +30,7 @@ char* decryptContents(char* encryptedString, long fileSize, const char* password
   uint8_t keybuffer[KEY_SIZE];
   int errorCode;
   char* decryptedContents;
-  int sizeOfDecryptedContents = fileSize - MAC_SIZE;	
+  long sizeOfDecryptedContents = 0;
   //TODO: Test for empty string
 
   crypt_err = gcry_cipher_open(&handle, ENCRYPTION_ALGO, ENCRYPTION_MODE, GCRY_CIPHER_SECURE);
@@ -27,10 +43,12 @@ char* decryptContents(char* encryptedString, long fileSize, const char* password
   crypt_err = gcry_cipher_setkey(handle, (const void *)&keybuffer[0],KEY_SIZE);
   //TODO: Error checking
 
-  printf("Size of Decrypted Contents: %ld", sizeOfDecryptedContents);
+  sizeOfDecryptedContents = strlen(encryptedString);
+  sizeOfDecryptedContents = getFileEncryptedLength(sizeOfDecryptedContents);
   decryptedContents = (char *)malloc(sizeOfDecryptedContents);
+  memset(decryptedContents,0x0,sizeOfDecryptedContents);
 
-  gcry_cipher_setiv(handle, &IV, 16);   
+  gcry_cipher_setiv(handle, &IV[0], 16);   
   
   errorCode = gcry_cipher_decrypt(handle, decryptedContents, sizeOfDecryptedContents, encryptedString, sizeOfDecryptedContents);
   

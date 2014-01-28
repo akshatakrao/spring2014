@@ -5,6 +5,10 @@
 #include<unistd.h>
 #include<techrypt.h>
 #include<cryptcommon.h>
+#include<sys/types.h>
+#include<sys/socket.h>
+#include<netinet/in.h>
+#include<arpa/inet.h>
 
 /*
 1. Stage 1  - Take a file and encrypt it 
@@ -58,7 +62,9 @@ void makeCopy(char* commandLineOption, char* filePath, char* ipPortString)
 {
   const char* passphrase;
   char* encryptedContents;
-   
+  long fileSize; 
+  size_t len;
+
   if(access(filePath, F_OK) != 0)
   {
        fprintf(stderr, "Invalid File Path");
@@ -69,16 +75,14 @@ void makeCopy(char* commandLineOption, char* filePath, char* ipPortString)
  
   passphrase = requestPassphrase();
   encryptedContents = encrypt_file(file, passphrase); 
-
-  printf("\nEncryptedContents : %s", encryptedContents);
-
+  len = 144;
   if(strcmp(commandLineOption,"-d") == 0)
   {
-      remoteSecureCopy(file, ipPortString, encryptedContents);  
+      remoteSecureCopy(file, ipPortString, encryptedContents, len);  
   }
   else if(strcmp(commandLineOption, "-l") == 0)
   {
-      localSecureCopy(file, filePath, encryptedContents);
+      localSecureCopy(file, filePath, encryptedContents, len);
   }
   else
   {
@@ -110,8 +114,43 @@ char* getDestinationFilePath(char* filePath)
 /**
  * Remote Secure Copy
  */
-void remoteSecureCopy(FILE* file, char* ipPortString, char* encryptedContents)
+void remoteSecureCopy(FILE* file, char* ipPortString, char* encryptedContents, size_t len)
 {
+  
+   char* IP;
+   char* portString;
+   struct sockaddr_in serverAddress;
+   in_port_t port = atoi(portString);
+   int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP), ret;
+   size_t bytesSent; 
+
+   if(sock < 0)
+   {
+       fprintf(stderr, "\nInvalid Socket");
+       exit(INVALID_SOCKET);   
+   }
+  
+   memset(&serverAddress, 0 , sizeof(serverAddress));
+   serverAddress.sin_family = AF_INET;
+   ret = inet_pton(AF_INET, IP, &serverAddress.sin_addr.s_addr));
+
+   if(ret <= 0)
+   {
+      fprintf(stderr, "\nInvalid IP Address");
+      exit(INVALID_ADDR);
+   }
+
+   serverAddress.sin_port = htons(port);
+
+   if(connect(sock, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) < 0)
+   {
+       fprintf(stderr, "\nConnection Failed");
+       exit(CONNECTION_FAILED);
+   }
+
+   bytesSent = 
+
+    
   //TODO: Check if IP and Port are Valid
   //Create an encrypted temp file
   //Create a socket connection
@@ -122,7 +161,7 @@ void remoteSecureCopy(FILE* file, char* ipPortString, char* encryptedContents)
 /**
  * Local Copy
  */
-void localSecureCopy(FILE *inputFile, char* filePath, char* encryptedContents)
+void localSecureCopy(FILE *inputFile, char* filePath, char* encryptedContents, size_t len)
 {
     //Generate destination File Path
     //TODO: Test for complete filepaths 
@@ -146,10 +185,7 @@ void localSecureCopy(FILE *inputFile, char* filePath, char* encryptedContents)
  */
 void writeToFile(FILE* file, char* encryptNMACContents)
 {
-  size_t len = 0;
-  
-  len = strlen(encryptNMACContents);
-  fwrite(encryptNMACContents, len, 1, file);
+  fwrite(encryptNMACContents, strlen(encryptNMACContents), 1, file);
   fclose(file);
 } 
 
