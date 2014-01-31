@@ -1,0 +1,3 @@
+#ifdefine _GT
+THREAD_ERRORCODE_H
+#define _GTTHREAD_ERRORCODE_H

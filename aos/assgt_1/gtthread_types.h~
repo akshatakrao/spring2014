@@ -1,0 +1,52 @@
+//Author: Akshata Rao
+
+#ifndef GTTHREAD_TYPES_H
+#define GTTHREAD_TYPES_H
+#endif
+
+#include<ucontext.h>
+
+/**
+ * Thread State
+ */
+typedef enum 
+{
+  NEW,  
+  RUNNING,
+  WAITING,
+  READY,
+  TERMINATED  
+}gtthread_state;
+
+/**
+ * Thread Structure
+ */
+typedef struct
+{
+  long threadID; //Thread ID
+  gtthread_state state; //Thread State
+  ucontext_t context; //Thread Context
+
+  //Thread parent
+  gtthread_t* parent;
+
+  //Thread forked Children
+  gtthread_node* childthreads;
+  
+  //Pointer to function that has thread functionality
+  void *runfunction(void *);   
+  
+  //Values of arguments to the thread run function
+  void *arguments;
+
+}gtthread_t;
+
+
+typedef struct
+{
+  gtthread_t thread;
+  gtthread_t *link;
+
+}gtthread_node;
+
+

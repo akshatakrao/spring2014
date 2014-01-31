@@ -1,0 +1,36 @@
+#ifndef GTTHREAD_H
+#define GTTHREAD_H
+#endif
+
+
+enum 
+{
+  NEW,  
+	RUNNING,
+  WAITING,
+  READY,
+  TERMINATED  
+}gtthread_state;
+
+/**
+ * Thread Structure
+ */
+struct gtthread_t
+{
+	long threadID;
+	gtthread_t* parent;
+	
+	
+		//threadID
+	//parent thread ptr
+	//child threads
+	//context
+	//thread current state
+	//thread runfunction
+	//arguments for the thread run function
+	
+}gtthread_t;
+
+struct gtthread_t_list
+{
+	gtthread_
