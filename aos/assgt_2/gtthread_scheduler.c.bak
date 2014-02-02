@@ -1,0 +1,26 @@
+#include<gtthread_scheduler.h>
+#include<gtthread_test.h>
+
+static int firstEntry = 0;
+struct gtthread_node* currentPtr;
+
+void schedulerFunction()
+{
+    if(firstEntry == 0)
+    {
+        firstEntry = 1;
+        getcontext(&schedulerContext);
+        schedulerContext.uc_stack.ss_sp = malloc(STACK_SIZE);
+        schedulerContext.uc_stack.ss_size = STACK_SIZE;
+        schedulerContext.uc_stack.ss_flags = 0;
+        schedulerContext.uc_link = NULL;
+        makecontext(&schedulerContext, &schedulerFunction, 0);
+    } 
+
+    fprintf(stddebug, "\nLOG: Im in scheduler");
+    fprintf(stddebug, "\nReady Queue: %d", listOfThreads == NULL); 
+
+    displayQueue(&readyQueue);
+    displayList(listOfThreads);
+    //while(1);
+}

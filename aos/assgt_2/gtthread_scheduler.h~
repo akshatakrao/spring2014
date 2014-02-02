@@ -1,0 +1,16 @@
+#ifdef GT_SCHEDULER_H
+#define GT_SCHEDULER_H
+#endif
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <signal.h>
+#include <ucontext.h>
+#include <malloc.h>
+#include <sys/time.h>
+
+struct itimerval timeSlice;
+struct sigaction schedulerHandler;
+
+

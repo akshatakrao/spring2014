@@ -1,0 +1,148 @@
+#include<stdio.h>
+#include<gtthread.h>
+#include<gtthread_queue.h>
+#include<gtthread_list.h>
+#include<ucontext.h>
+#include<stdlib.h>
+
+void schedulerFunction()
+{
+
+	//Run the scheduler on a loop until queue is empty
+	while(queue->empty != 1)
+	{
+		queue->front = 
+	}
+
+}
+	
+
+/*
+ *
+ *Init GTThreads
+ */
+void gtthread_init(long period)
+{
+    quantum_size = period;
+
+	//Initialize Ready queue
+    initQueue(&readyQueue); 
+
+	//Initialize the scheduler
+	if (getcontext(&schedulerContext) == 0) 
+	{
+		schedulerContext.uc_stack.ss_sp = malloc(STACK_SIZE);
+		schedulerContext.uc_stack.ss_size = STACK_SIZE;
+		schedulerContext.uc_stack.ss_flags = 0;
+		schedulerContext.uc_link = NULL;
+
+	} else {
+		fprintf("\nAn error occurred while initializing scheduler context");
+		exit(1);
+	}	
+}
+
+/**
+ * Create a thread
+ */
+int  gtthread_create(gtthread_t *thread, void *(*start_routine)(void *), void *arg)
+{
+  thread->threadID = threadCtr;
+
+  thread->state = READY;
+  threadCtr++;
+  
+  thread->runfunction = start_routine;
+  thread->arguments = arg;
+
+ //TODO: Store a pointer to the currently running thread
+  thread->parent = getRunningThread();
+
+  thread->childthreads = NULL;
+
+  //Set context
+  getcontext(&(thread->context));
+  thread->context.uc_stack.ss_sp = malloc(STACK_SIZE);
+  thread->context.uc_stack.ss_size = STACK_SIZE;
+  thread->context.uc_stack.ss_flags = 0;
+  thread->context.uc_link = NULL;
+
+  //TODO: Check on number of arguments
+  makecontext(&(thread->context), (void(*)())start_routine, 1, arg);
+
+  //Add thread to ready Queue
+  addThreadToQueue(&readyQueue, thread);
+
+  //add thread to list of threads
+  appendThread(&listOfThreads, thread);
+}
+
+/**
+ * Get Running thread
+ */
+gtthread_t* getRunningThread()
+{
+  gtthread_node* ptr = listOfThreads;
+  gtthread_t* thread;
+
+  while(ptr != NULL)
+  {
+      if(ptr->thread->state == RUNNING)
+      {
+          return ptr->thread; 
+      }
+
+      ptr = ptr->link;
+  }
+
+  return NULL;
+}
+
+
+/**
+ * Return Thread Self
+ */
+gtthread_t gtthread_self(void)
+{
+    gtthread_t* threadPtr = getRunningThread();
+
+    return *threadPtr;
+}
+
+int trial()
+{
+	printf("Whats up");
+}
+
+void test_create();
+
+int main()
+{
+	test_create();
+}
+
+void test_create()
+{
+	gtthread_t *thread, *thread1;
+	int a = 3;
+	void *arg;
+
+	arg = &a;
+	
+	thread = (gtthread_t*)malloc(sizeof(gtthread_t));
+	gtthread_create(thread, &trial, arg);
+	
+	displayList(listOfThreads);
+	displayQueue(&readyQueue);	
+	
+	thread1 = (gtthread_t*)malloc(sizeof(gtthread_t));
+	gtthread_create(thread1, &trial, arg);
+
+	displayList(listOfThreads);
+	displayQueue(&readyQueue);
+
+	setcontext(&(thread->context));
+}
+
+
+
