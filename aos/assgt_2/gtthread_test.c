@@ -7,21 +7,51 @@
 //#include<gtthread_scheduler.h>
 #include<string.h>
 
-int trial()
+int trial1()
 {
-	fprintf(stderr,"\nLOG: Whats up MAD BOY");
+	fprintf(stderr,"\nLOG: In trial thread 1");
+}
+
+int trial2()
+{
+    fprintf(stderr, "\nLOG: In trial thread 2");
+}
+
+int trial3()
+{
+    fprintf(stderr, "\nLOG: In trial thread 3");
 }
 
 void test_init()
 {
-    gtthread_t *thread;
+    gtthread_t *thread3, *thread1, *thread2;
     int a = 3;
     void* arg  = &a;
     gtthread_init(100000);
-    fprintf(stddebug,"\nLOG: Whatsup?");
 
-    thread = (gtthread_t*)malloc(sizeof(gtthread_t));
-    gtthread_create(thread, &trial, arg);
+    thread1 = (gtthread_t*)malloc(sizeof(gtthread_t));
+    fprintf(stddebug, "\nLOG: Adding thread 1");
+    
+    gtthread_create(thread1, &trial1, arg);
+    fprintf(stddebug, "\nLOG:Added Thread 1. Adding thread 2"); 
+  
+    fprintf(stddebug, "\nLOG: Threads are equal? %d", gtthread_equal(*thread1, *thread1)); 
+    thread2 = (gtthread_t*)malloc(sizeof(gtthread_t)); 
+    gtthread_create(thread2, &trial2, arg); 
+    fprintf(stddebug, "\nLOG: Added Thread 2. Adding thread 3");
+ 
+    fprintf(stddebug, "\nLOG: Diff Threads are equal? %d", gtthread_equal(*thread1, *thread2));   
+    thread3 = (gtthread_t*)malloc(sizeof(gtthread_t));
+    gtthread_create(thread3, &trial3, arg);
+    //fprintf
+    //
+    fprintf(stddebug, "\nHERE!");
+    while(1)
+    {
+//        fprintf(stddebug, "Whats up");
+    }
+    fprintf(stddebug, "\nHERE @");   
+     
 }
 
 void createDebugFile()

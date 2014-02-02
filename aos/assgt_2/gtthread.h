@@ -32,6 +32,7 @@ struct sigaction schedulerHandler;
 
 void schedulerFunction();
 
+void wrapperFunction(void*(*start_routine)(void*), void* arg);
 
 void gtthread_init(long period);
 

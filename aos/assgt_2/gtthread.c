@@ -12,18 +12,27 @@
  * Sets context to Main Context
  */
 void mainThreadContextSwitcher()
-{
-    setcontext(&mainContext);
+{    setcontext(&mainContext);
 }
 
-int counter = 0;
-
+int entered = 0, counter = 0;
 /*
  *
  *Init GTThreads
  */
 void gtthread_init(long period)
-{
+{   
+    if(entered == 0)
+    {
+      fprintf(stderr, "\nLOG: Entered");
+     entered = 1;
+   }
+   else
+   {
+      fprintf(stderr, "\nLOG: Tried to enter again");  
+      return;
+   }
+
    createDebugFile();
 
    quantum_size = period;
@@ -74,14 +83,14 @@ void gtthread_init(long period)
   mainContext.uc_stack.ss_sp = malloc(STACK_SIZE);
   mainContext.uc_stack.ss_size = STACK_SIZE;
   mainContext.uc_stack.ss_flags = 0;
-  mainContext.uc_link = &schedulerContext;
+  mainContext.uc_link = NULL;//&schedulerContext;
   makecontext(&mainContext, &mainThreadContextSwitcher, 0);
 
   fprintf(stddebug, "\nLOG: Allocate Main Context");
 
   mainThread = (gtthread_t*)malloc(sizeof(gtthread_t));
   mainThread->threadID = threadCtr++;
-  mainThread->state = READY;
+  mainThread->state = RUNNING;
   mainThread->context = mainContext; 
   fprintf(stddebug, "\nLOG: Create Main Thread: %ld", mainThread->threadID);
 
@@ -89,16 +98,43 @@ void gtthread_init(long period)
   appendThread(&listOfThreads, mainThread);
   fprintf(stddebug, "\nLOG: Added Main Thread to List and Queue");
 
-  //setitimer(ITIMER_VIRTUAL, &timeSlice, NULL);  
+  setitimer(ITIMER_VIRTUAL, &timeSlice, NULL);  
   //END:
 
   counter++;
   fprintf(stddebug, "\nLOG: Counter: %d",counter);
+
+  //while(1);
   schedulerFunction();
-  fprintf(stddebug, "\nI came here");
+  fprintf(stddebug, "\nLOG: Completed Initialization");
   
 }	
-	
+
+/**
+ * Wrapper Function
+ */
+void wrapperFunction(void*(*start_routine)(void*), void* arg)
+{
+    void* retValue;
+    gtthread_t* runningThread = getRunningThread();
+
+    fprintf(stddebug, "\nLOG: In wrapper function");
+    retValue = start_routine(arg);
+
+    fprintf(stddebug, "\nCompleted calling function");
+
+    runningThread = getRunningThread();
+    runningThread->state = TERMINATED;
+    
+    runningThread->returnValue = retValue;
+    fprintf(stddebug, "\nLOG: Calling scheduler");
+
+    setitimer(ITIMER_VIRTUAL, &timeSlice, NULL);
+    
+    schedulerFunction();
+    //gtthread_cancel(*runningThread);
+}
+
 
 
 /**
@@ -106,6 +142,7 @@ void gtthread_init(long period)
  */
 int  gtthread_create(gtthread_t *thread, void *(*start_routine)(void *), void *arg)
 {
+  fprintf(stddebug, "\nLOG: Creating Thread: %d", threadCtr);
   thread->threadID = threadCtr;
 
   thread->state = READY;
@@ -124,17 +161,18 @@ int  gtthread_create(gtthread_t *thread, void *(*start_routine)(void *), void *a
   thread->context.uc_stack.ss_sp = malloc(STACK_SIZE);
   thread->context.uc_stack.ss_size = STACK_SIZE;
   thread->context.uc_stack.ss_flags = 0;
-  thread->context.uc_link = NULL;
+  thread->context.uc_link = NULL;//&schedulerContext;
 
   //TODO: Check on number of arguments
-  makecontext(&(thread->context), (void(*)())start_routine, 1, arg);
+
+  makecontext(&(thread->context), (void (*)(void))&wrapperFunction, 2, start_routine, arg);
 
   //Add thread to ready Queue
   addThreadToQueue(&readyQueue, thread);
 
   //add thread to list of threads
   appendThread(&listOfThreads, thread);
-  setcontext(&schedulerContext);
+  //setcontext(&schedulerContext);
 }
 
 /**
@@ -143,10 +181,11 @@ int  gtthread_create(gtthread_t *thread, void *(*start_routine)(void *), void *a
 gtthread_t* getRunningThread()
 {
   gtthread_node* ptr = listOfThreads;
-  gtthread_t* thread;
+  gtthread_t* thread = NULL;
 
   while(ptr != NULL)
   {
+      fprintf(stddebug, "\nLOG: GRunning Thread: %ld %d %d", ptr->thread->threadID, ptr->thread->state, RUNNING); 
       if(ptr->thread->state == RUNNING)
       {
           return ptr->thread; 
@@ -169,22 +208,30 @@ gtthread_t gtthread_self(void)
     return *threadPtr;
 }
 
+/**
+ * Check if threads are equal
+ */
+int gtthread_equal(gtthread_t t1, gtthread_t t2)
+{
+  if(t1.threadID == t2.threadID)
+      return 1;
+  else
+      return 0;
+
+}
 
 int main()
 {
     
 	test_init();
 }
-
+;
 static int firstEntry = 0;
 
 void schedulerFunction()
 {
-    int count = 0;
-    gtthread_node* currentPtr;
-    gtthread_t* temp;
-
-    fprintf(stddebug, "\nLOG: Im in scheduler");
+    gtthread_t* front, *temp;
+    fprintf(stddebug,"\nLOG: Im in scheduler");
 
     if(firstEntry == 0)
     {
@@ -199,42 +246,33 @@ void schedulerFunction()
         fprintf(stddebug, "\nLOG: Saved scheduler context");  
 
     } 
+    
+    front = readyQueue->front->thread;
 
-    displayQueue(readyQueue);
-    displayList(listOfThreads);
-    int test;
+    if(front != NULL && front->threadID == 0)
+    {
+        fprintf(stddebug,"\nIn Thread ID: 0");
+        temp = removeThreadFromQueue(&readyQueue);
+        fprintf(stddebug,"\nMain Thread: %d", temp->state);
+        addThreadToQueue(&readyQueue, temp);
 
-    if(readyQueue->count == 1)
-    { 
-        fprintf(stddebug, "Only 1");
-        scanf("%d", &test);
+        timeSlice.it_value.tv_sec = 0; 
+      	timeSlice.it_value.tv_usec =(long)quantum_size;
+	      timeSlice.it_interval = timeSlice.it_value;
+        setitimer(ITIMER_VIRTUAL, &timeSlice, NULL);
         return;
     }
-     
-    while(count < readyQueue->count)
+    else
     {
-        currentPtr = readyQueue->front;
- 
-        fprintf(stddebug, "\nLOG: Reading front of the queue: Thread ID: %ld", currentPtr->thread->threadID);
-        
-        //TODO: Check if the thread state can ever be RUNNING
-        if(currentPtr != NULL && currentPtr->thread->state == READY)
-        {
-            fprintf(stddebug, "\nLOG: Swapping scheduler and thread context");
-            //setcontext(&(currentPtr->thread->context)); 
-            setitimer(ITIMER_VIRTUAL, &timeSlice, NULL);          
-            setcontext(&currentPtr->thread->context); 
-        }
-        else
-        {
-            fprintf(stderr, "\nLOG: Thread %ld in state %d. Sending to back of Queue", currentPtr->thread->threadID, currentPtr->thread->state); 
-            temp = removeThreadFromQueue(&readyQueue);
-            addThreadToQueue(&readyQueue, temp);
-        }
-
-        //Incrementing count
-        count++;
-
+       
+        temp = removeThreadFromQueue(&readyQueue);
+        temp->state = RUNNING;
+        addThreadToQueue(&readyQueue,temp);
+        fprintf(stddebug, "\nSetting context to Thread ID: %ld" ,temp->threadID);
+        setitimer(ITIMER_VIRTUAL, &timeSlice, NULL);
+        setcontext(&(temp->context));       
     }
+
 }
+
 
