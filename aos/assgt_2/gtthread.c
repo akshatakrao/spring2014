@@ -98,7 +98,7 @@ void gtthread_init(long period)
   fprintf(stddebug, "\nLOG: Create Main Thread: %ld", mainThread->threadID);
 
   addThreadToQueue(&readyQueue,mainThread);
-  appendThread(&listOfThreads, mainThread);
+  //appendThread(&listOfThreads, mainThread);
   fprintf(stddebug, "\nLOG: Added Main Thread to List and Queue");
 
   setitimer(ITIMER_REAL, &timeSlice, NULL); 
@@ -161,6 +161,7 @@ int  gtthread_create(gtthread_t *thread, void *(*start_routine)(void *), void *a
   thread->parent = getRunningThread();
 
   thread->childthreads = NULL;
+  thread->blockingThreads = NULL;
 
   //Set context
   getcontext(&(thread->context));
@@ -168,6 +169,7 @@ int  gtthread_create(gtthread_t *thread, void *(*start_routine)(void *), void *a
   thread->context.uc_stack.ss_size = STACK_SIZE;
   thread->context.uc_stack.ss_flags = 0;
   thread->context.uc_link = NULL;//&schedulerContext;
+//  thread->blockingThreads = NULL;
 
   //TODO: Check on number of arguments
 
@@ -177,7 +179,7 @@ int  gtthread_create(gtthread_t *thread, void *(*start_routine)(void *), void *a
   addThreadToQueue(&readyQueue, thread);
 
   //add thread to list of threads
-  appendThread(&listOfThreads, thread);
+  //appendThread(&listOfThreads, thread);
 }
 
 /**
@@ -249,7 +251,7 @@ void schedulerFunction()
     gtthread_t* frontThread, *selectedThread = NULL, *prevThread;
     gtthread_node* blockingThreads;  
 
-    //displayQueue(readyQueue);
+    displayQueue(readyQueue);
 
 
 
@@ -257,12 +259,13 @@ void schedulerFunction()
         currentThread->state = READY;
 
     int count = 0;
-    fprintf(stddebug, "\nLOG: Ready Queue: %d", readyQueue->count);
+//    fprintf(stddebug, "\nLOG: Ready Queue: %d", readyQueue->count);
 
     while(count < readyQueue->count)
     {     
       frontThread = removeThreadFromQueue(&readyQueue);
 
+      fprintf(stddebug, "\nFront Thread %u: ", frontThread);
 
       if(frontThread->state == WAITING)
       {
@@ -270,13 +273,17 @@ void schedulerFunction()
 
           int blockingThreadsCompleted = 1;
 
+          fprintf(stddebug, "\nBlocking Threads in here");
+
           while(blockingThreads != NULL)
           {
+            fprintf(stddebug, "\nWhats up");  
             gtthread_state blockingThreadState = getThreadState(blockingThreads->thread->threadID);
 
+            fprintf(stddebug, "\nAfter whats up");
             if(blockingThreadState != TERMINATED && blockingThreadState != CANCELLED)
             {
-                //fprintf(stddebug, "\nLOG: Blocked Thread %ld is still blocked on Thread %ld with state %d, %d", frontThread->threadID, blockingThreads->thread->threadID, blockingThreads->thread->state, TERMINATED); 
+                fprintf(stddebug, "\nLOG: Blocked Thread %ld is still blocked on Thread %ld with state %d, %d", frontThread->threadID, blockingThreads->thread->threadID, blockingThreads->thread->state, TERMINATED); 
                 blockingThreadsCompleted = 0;
                 break; 
             }
@@ -451,9 +458,11 @@ int gtthread_join(gtthread_t thread, void **status)
         fprintf(stddebug, "\nRunning Thread is %ld", runningThread->threadID);
 
     runningThread->state = WAITING;
+
+    fprintf(stddebug, "\nRunning Thread: Blocking Thread %u", &(runningThread->blockingThreads));
     appendThread(&(runningThread->blockingThreads), joineeThread);
 
-    fprintf(stddebug, "\nLOG: Appending blocking thread %ld", thread.threadID);
+    //fprintf(stddebug, "\nLOG: Appending blocking thread %ld", thread.threadID);
     setitimer(ITIMER_REAL, &timeSlice, NULL);
     schedulerFunction();
 
@@ -463,13 +472,13 @@ int gtthread_join(gtthread_t thread, void **status)
     }
   */    
 
-    fprintf(stddebug, "\nLOG: Reached here");
+//    fprintf(stddebug, "\nLOG: Reached here");
 
     if(status != NULL) 
     {
         *status = (joineeThread)->returnValue; 
     }
-    fprintf(stddebug, "\nLOG: Not here");
+//    fprintf(stddebug, "\nLOG: Not here");
     //displayQueue(readyQueue);
     //fprintf(stddebug, "\nThread Join Return Value: %d", (int) joineeThread->returnValue);
     

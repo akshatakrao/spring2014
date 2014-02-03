@@ -1,23 +1,32 @@
-// Test7
-// gtthread_cancel. The program should terminate smoothly.
+// Test4
+// Thread create chaining.
+// The program should print out liek below when CHAIN_LEN is 20.
+//
+// worker1 starts
+// worker2 starts
+// ...
+// worker20 starts
+// worker20 ends
+// worker19 ends
+// ...
+// worker 1 ends
 
 #include <stdio.h>
 #include <gtthread.h>
 
-void* worker2(void* arg)
-{
-	while(1);
-}
+#define CHAIN_LEN 20
 
 void* worker(void* arg)
 {
 	gtthread_t th;
 
-	gtthread_create(&th, worker2, NULL);
-	gtthread_cancel(th);
-	gtthread_join(th, NULL);
-
-	while(1);
+	long id = (long) arg;
+	printf("worker%ld starts\n", id);
+	if (id < CHAIN_LEN) {
+		gtthread_create(&th, worker, (void*) (id + 1));
+		gtthread_join(th, NULL);
+	}
+	printf("worker%ld ends\n", id);
 }
 
 int main()
@@ -25,8 +34,12 @@ int main()
 	gtthread_t th;
 
 	gtthread_init(1000);
-	gtthread_create(&th, worker, NULL);
-	gtthread_cancel(th);
+	gtthread_create(&th, worker, (void*) 1);
 	gtthread_join(th, NULL);
+
+	while(1)
+	{
+			;
+	}
 	return 0;
 }
