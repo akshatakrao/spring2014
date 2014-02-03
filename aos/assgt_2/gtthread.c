@@ -327,7 +327,6 @@ void schedulerFunction()
     fprintf(stddebug, "\nSetting context to Thread ID: %ld" ,selectedThread->threadID);
     //setitimer(ITIMER_REAL, &timeSlice, NULL);
 
-    fprintf(stddebug, "\nLOG: Prev Thread: %d currentThread : %d", prevThread, selectedThread);
     setitimer(ITIMER_REAL, &timeSlice, NULL);
     swapcontext(&(prevThread->context),&(selectedThread->context));
 }
@@ -427,7 +426,7 @@ int gtthread_join(gtthread_t thread, void **status)
 
     if(joineeThread == NULL)
     {
-        fprintf(stderr, "\nERROR: Invalid Thread ID to join on: %d", thread.threadID);
+        fprintf(stderr, "\nERROR: Invalid Thread ID to join on: %ld", thread.threadID);
         exit(1);
     }
 
@@ -436,7 +435,8 @@ int gtthread_join(gtthread_t thread, void **status)
     runningThread->state == WAITING;
     appendThread(&(runningThread->blockingThreads), joineeThread);
 
-    schedulerFunction();
+     setitimer(ITIMER_REAL, &timeSlice, NULL);
+    //schedulerFunction();
 }
 
 int gtthread_join2(gtthread_t, void **);
