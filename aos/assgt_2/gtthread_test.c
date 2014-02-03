@@ -52,11 +52,11 @@ void test_init()
     }*/
     fprintf(stddebug, "\nHERE @");   
     
-    sleep(10); 
-  /*   while(1)
+    //sleep(10); 
+   while(1)
     {
        // printf("hi\t"); 
-    }*/
+    }
 }
 void createDebugFile()
 {
@@ -110,6 +110,9 @@ void joinFunction()
 
     gtthread_join(*joinee, retVal);
     fprintf(stddebug, "\nAfter Join Returns");
+    
+    int a;
+    scanf("%d", &a);
 }
 void test_join()
 {
