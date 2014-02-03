@@ -381,8 +381,17 @@ void gtthread_exit(void *retval)
     {
         fprintf(stddebug, "\nLOG: Called Exit on Non-Main. Return value to Joined thread");
     }
+  
     schedulerFunction();
 
+}
+
+/**
+ * GTThread Yield
+ */
+void gtthread_yield(void)
+{
+    setitimer(ITIMER_REAL, &timeSlice, NULL);
 }
 
 /**
@@ -439,52 +448,4 @@ int gtthread_join(gtthread_t thread, void **status)
     //schedulerFunction();
 }
 
-int gtthread_join2(gtthread_t, void **);
-/**
- *Thread Join
- */
-int  gtthread_join2(gtthread_t thread, void **status)
-{
-    gtthread_node* ptr;
-    gtthread_t* joinedThread, *runningThread = getRunningThread();
 
-    if(runningThread == NULL)
-    {
-        fprintf(stddebug, "\nERROR: No Running threads found?!");
-        return 0;  
-        // exit(1);
-    }
-
-    fprintf(stddebug, "\nLOG: Running Thread %ld joining on Thread %ld", runningThread->threadID, thread.threadID);
-    runningThread->state = WAITING;
-    appendThread(&(runningThread->blockingThreads), &thread);
-
-    ptr = listOfThreads;
-
-    while(ptr != NULL)
-    {
-        if(ptr->thread->threadID == thread.threadID)
-        {
-          joinedThread = ptr->thread;
-          break;
-        }
-    }
-
-    while(1)
-    {
-        if((joinedThread->state == TERMINATED || joinedThread->state == CANCELLED))
-        {
-            fprintf(stddebug, "\nLOG: Joined Thread %ld terminated ", thread.threadID);
-            status = &(joinedThread->returnValue); 
-            break;
-        }
-   }
-    //schedulerFunction();
-   
-    fprintf(stddebug, "\nLOG: Returned from Join"); 
-    return 1;//Success 
-}
-
-//Fix scheduler - Send non ready and not eligible to be unblocked threads to the end.
-//Fix state - Thread State from Running to Ready
-//Fix thread join
