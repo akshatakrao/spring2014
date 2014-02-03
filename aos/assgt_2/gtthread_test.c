@@ -48,7 +48,7 @@ void test_init()
     fprintf(stddebug, "\nHERE!");
     while(1)
     {
-//        fprintf(stddebug, "Whats up");
+        fprintf(stddebug, "Whats up");
     }
     fprintf(stddebug, "\nHERE @");   
      
@@ -86,6 +86,16 @@ void test_create()
 	displayQueue(readyQueue);
 */
 //	setcontext(&(thread->context));
+}
+
+void test_exit()
+{
+    int retVal = 1, a = 3;
+
+    gtthread_init(500000);
+    gtthread_exit(&retVal);
+
+
 }
 
 
