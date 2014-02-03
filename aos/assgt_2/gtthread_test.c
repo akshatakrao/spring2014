@@ -27,7 +27,7 @@ void test_init()
     gtthread_t *thread3, *thread1, *thread2;
     int a = 3;
     void* arg  = &a;
-    gtthread_init(100000);
+    gtthread_init(50000);
 
     thread1 = (gtthread_t*)malloc(sizeof(gtthread_t));
     fprintf(stddebug, "\nLOG: Adding thread 1");
@@ -46,14 +46,18 @@ void test_init()
     //fprintf
     //
     fprintf(stddebug, "\nHERE!");
-    while(1)
+    /*while(1)
     {
         fprintf(stddebug, "Whats up");
-    }
+    }*/
     fprintf(stddebug, "\nHERE @");   
-     
+    
+    sleep(10); 
+  /*   while(1)
+    {
+       // printf("hi\t"); 
+    }*/
 }
-
 void createDebugFile()
 {
   stddebug = stderr;//fopen("debug.log", "w");
@@ -92,10 +96,39 @@ void test_exit()
 {
     int retVal = 1, a = 3;
 
-    gtthread_init(500000);
+    gtthread_init(5000000);
     gtthread_exit(&retVal);
-
-
 }
 
+gtthread_t *joinee;
 
+void joinFunction()
+{
+    fprintf(stddebug, "\nLOG: Im in JOIN");
+    void **retVal;
+  
+
+    gtthread_join(*joinee, retVal);
+    fprintf(stddebug, "\nAfter Join Returns");
+}
+void test_join()
+{
+  gtthread_t *thread1, *thread2;
+	int a = 3;
+	void *arg;
+
+	arg = &a;
+  gtthread_init(50000);
+
+	thread1 = (gtthread_t*)malloc(sizeof(gtthread_t));
+	gtthread_create(thread1, &joinFunction, arg);
+
+  joinee = (gtthread_t*)malloc(sizeof(gtthread_t));
+	gtthread_create(joinee, &trial1, arg);
+   
+  fprintf(stderr, "\nWhats up?");
+  while(1)
+  {
+  } 
+
+}

@@ -16,6 +16,7 @@ void mainThreadContextSwitcher()
 }
 
 int entered = 0, counter = 0;
+gtthread_t* currentThread = NULL;
 /*
  *
  *Init GTThreads
@@ -61,14 +62,16 @@ void gtthread_init(long period)
   //Initialize timeSlice
   timeSlice.it_value.tv_sec = 0; 
 	timeSlice.it_value.tv_usec =(long)period;
-	timeSlice.it_interval = timeSlice.it_value;
+	timeSlice.it_interval.tv_sec = 0;
+  timeSlice.it_interval.tv_usec = (long) period;
   	
 	
   //Initialize scheduler signal handler
   //TODO: Check if its PROF alarm
   memset(&schedulerHandler, 0, sizeof(schedulerHandler));
   schedulerHandler.sa_handler=&schedulerFunction;
-  sigaction(SIGVTALRM, &schedulerHandler, NULL);
+  sigemptyset(&schedulerHandler.sa_mask);
+  sigaction(SIGALRM, &schedulerHandler, NULL);
   fprintf(stddebug, "\nLOG: Set Scheduler Handler");
 
   //Insert calling function to the scheduler Queue
@@ -91,21 +94,22 @@ void gtthread_init(long period)
   mainThread = (gtthread_t*)malloc(sizeof(gtthread_t));
   mainThread->threadID = threadCtr++;
   mainThread->state = RUNNING;
-  mainThread->context = mainContext; 
+  mainThread->context = mainContext;
+  currentThread = mainThread; 
   fprintf(stddebug, "\nLOG: Create Main Thread: %ld", mainThread->threadID);
 
   addThreadToQueue(&readyQueue,mainThread);
   appendThread(&listOfThreads, mainThread);
   fprintf(stddebug, "\nLOG: Added Main Thread to List and Queue");
 
-  setitimer(ITIMER_VIRTUAL, &timeSlice, NULL);  
+  setitimer(ITIMER_REAL, &timeSlice, NULL);  
   //END:
 
   counter++;
   fprintf(stddebug, "\nLOG: Counter: %d",counter);
 
-  //while(1);
-  schedulerFunction();
+ // while(1);
+  //schedulerFunction();
   fprintf(stddebug, "\nLOG: Completed Initialization");
   
 }	
@@ -130,9 +134,9 @@ void wrapperFunction(void*(*start_routine)(void*), void* arg)
     //runningThread->returnValue = retValue;
     fprintf(stddebug, "\nLOG: Calling scheduler");
 
-    setitimer(ITIMER_VIRTUAL, &timeSlice, NULL);
+    setitimer(ITIMER_REAL, &timeSlice, NULL);
     
-    //schedulerFunction();
+    schedulerFunction();
     //gtthread_cancel(*runningThread);
 }
 
@@ -186,16 +190,18 @@ gtthread_t* getRunningThread()
 
   while(ptr != NULL)
   {
-      fprintf(stddebug, "\nLOG: GRunning Thread: %ld %d %d", ptr->thread->threadID, ptr->thread->state, RUNNING); 
+      //fprintf(stddebug, "\nLOG: GRunning Thread: %ld %d %d", ptr->thread->threadID, ptr->thread->state, RUNNING); 
       if(ptr->thread->state == RUNNING)
       {
-          return ptr->thread; 
+        //  fprintf(stddebug, "\nLOG: Running Thread Found: %ld", ptr->thread->threadID);
+          thread = ptr->thread; 
       }
 
       ptr = ptr->link;
   }
 
-  return NULL;
+  //fprintf(stddebug, "\nLOG: Running Thread Selected %ld", thread->threadID);
+  return thread;
 }
 
 
@@ -223,19 +229,75 @@ int gtthread_equal(gtthread_t t1, gtthread_t t2)
 
 int main()
 {
-    
-	test_exit();
+  //test_join();  
+//	test_exit();
+test_init();
 }
+
+ void printMain();
+ struct sigaction handler;  
+
+ int main2()
+ {
+      timeSlice.it_value.tv_sec = 0;
+      timeSlice.it_value.tv_usec = 500000;
+      timeSlice.it_interval = timeSlice.it_value;
+      setitimer(ITIMER_VIRTUAL, &timeSlice, NULL);
+  
+      memset(&handler, 0 , sizeof(handler));
+      handler.sa_handler=printMain;
+      sigaction(SIGVTALRM, &handler, NULL) ;
+      setitimer(ITIMER_VIRTUAL, &timeSlice, NULL);
+ 
+      while(1);
+  
+  }
+  
+ void printMain()
+{
+    printf("In Main");
+}
+
 
 static int firstEntry = 0;
 
 /**
  * Scheduler Function
  */
+
 void schedulerFunction()
 {
+    gtthread_t *frontThread;
+    //fprintf(stddebug, "\nLOG: Im in scheduler. Queue Size: %d", readyQueue->count);
+    displayQueue(readyQueue);
+    
+    int a;
+    //scanf("%d", &a);
+
+    if(currentThread->state == RUNNING)
+    {
+      currentThread->state = READY;
+    }
+
+    do
+    {
+      frontThread = removeThreadFromQueue(&readyQueue);
+      addThreadToQueue(&readyQueue, frontThread);
+
+    }while(frontThread->state != READY);
+   
+
+    frontThread->state = RUNNING;
+    currentThread = frontThread;
+    fprintf(stddebug, "\nSetting context to Thread ID: %ld" ,frontThread->threadID);
+    setitimer(ITIMER_REAL, &timeSlice, NULL);
+    setcontext(&(frontThread->context));
+}
+
+void schedulerFunction2()
+{
     gtthread_t* front, *temp;
-    fprintf(stddebug,"\nLOG: Im in scheduler");
+    fprintf(stddebug,"\nLOG: Im in scheduler : Queue Count: %d", readyQueue->count);
 
     if(firstEntry == 0)
     {
@@ -253,8 +315,8 @@ void schedulerFunction()
     
     front = readyQueue->front->thread;
 
-    if(front != NULL && front->threadID == 0)
-    {
+    /*if(front != NULL && front->threadID == 0)
+    { 
         fprintf(stddebug,"\nIn Thread ID: 0");
         temp = removeThreadFromQueue(&readyQueue);
         fprintf(stddebug,"\nMain Thread: %d", temp->state);
@@ -264,20 +326,63 @@ void schedulerFunction()
       	timeSlice.it_value.tv_usec =(long)quantum_size;
 	      timeSlice.it_interval = timeSlice.it_value;
         setitimer(ITIMER_VIRTUAL, &timeSlice, NULL);
+        
+        schedulerFunction();
         return;
     }
-    else
+    else*/
     {
        
         temp = removeThreadFromQueue(&readyQueue);
+        int canRun = 1;
 
-        //Adding support for Blocked Threads  
+        //If Thread is Terminated, Remove Thread From Queue  
+        if(temp->state == TERMINATED || temp->state == CANCELLED)
+        {
+          fprintf(stddebug, "\nLOG: Thread has completed. Remove Thread From Queue");   
+          canRun = 0;
+        }
+       
+        //If Thread is Blocked, Check if its blocking Threads have completed 
+        if(temp->state == WAITING)
+        {
+            gtthread_node* blockingThreads = temp->blockingThreads;
+            int blockingThreadsCompleted = 1;
 
-        temp->state = RUNNING;
-        addThreadToQueue(&readyQueue,temp);
-        fprintf(stddebug, "\nSetting context to Thread ID: %ld" ,temp->threadID);
-        setitimer(ITIMER_VIRTUAL, &timeSlice, NULL);
-        setcontext(&(temp->context));       
+
+            fprintf(stddebug, "\nLOG: Checking for blocking threads");
+            while(blockingThreads != NULL)
+            {
+                if(blockingThreads->thread->state != TERMINATED && blockingThreads->thread->state != CANCELLED)
+                {
+                    blockingThreadsCompleted = 0;
+                    canRun = 0;
+                }
+
+                blockingThreads = blockingThreads->link;
+            }
+
+            if(blockingThreadsCompleted == 1)
+            {
+                fprintf(stddebug, "\nLOG: All waiting threads have completed");
+                canRun = 1;
+            }
+        }
+
+        if(canRun)
+        {
+          temp->state = RUNNING;
+          addThreadToQueue(&readyQueue,temp);
+          fprintf(stddebug, "\nSetting context to Thread ID: %ld" ,temp->threadID);
+          setitimer(ITIMER_REAL, &timeSlice, NULL);
+          setcontext(&(temp->context));
+         
+        
+          if(temp->state == RUNNING)
+          {
+              temp->state = READY;
+          } 
+        }    
     }
 
 }
@@ -366,10 +471,12 @@ int  gtthread_join(gtthread_t thread, void **status)
             status = &(joinedThread->returnValue); 
             break;
         }
-    }
+   }
     //schedulerFunction();
     
-    return 1;//Success
+    return 1;//Success 
 }
 
-
+//Fix scheduler - Send non ready and not eligible to be unblocked threads to the end.
+//Fix state - Thread State from Running to Ready
+//Fix thread join

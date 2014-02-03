@@ -77,15 +77,17 @@ void displayQueue(gtthread_queue* queue)
 	gtthread_node* ptr;
 	ptr = queue->front;
 
-	fprintf(stddebug, "\nLOG: Displaying Queue");
-	
+//	fprintf(stddebug, "\nLOG: Displaying Queue");
+
+  fprintf(stddebug, "\nLOG: ");
+
 	while(ptr != NULL)
 	{
-		fprintf(stddebug, "\nLOG: Thread ID: %ld", ptr->thread->threadID); 
+		fprintf(stddebug, "(%ld, %d) ", ptr->thread->threadID, ptr->thread->state); 
 		ptr = ptr->link;
 	}
 
-  fprintf(stddebug, "\nLOG: End of Queue");
+ // fprintf(stddebug, "\nLOG: End of Queue");
 
 }
 
