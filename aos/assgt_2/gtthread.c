@@ -265,7 +265,7 @@ void schedulerFunction()
     {     
       frontThread = removeThreadFromQueue(&readyQueue);
 
-      fprintf(stddebug, "\nFront Thread %u: ", frontThread);
+      //fprintf(stddebug, "\nFront Thread %u: ", frontThread);
 
       if(frontThread->state == WAITING)
       {
@@ -273,17 +273,17 @@ void schedulerFunction()
 
           int blockingThreadsCompleted = 1;
 
-          fprintf(stddebug, "\nBlocking Threads in here");
+        //  fprintf(stddebug, "\nBlocking Threads in here");
 
           while(blockingThreads != NULL)
           {
-            fprintf(stddebug, "\nWhats up");  
+          //  fprintf(stddebug, "\nWhats up");  
             gtthread_state blockingThreadState = getThreadState(blockingThreads->thread->threadID);
 
-            fprintf(stddebug, "\nAfter whats up");
+//            fprintf(stddebug, "\nAfter whats up");
             if(blockingThreadState != TERMINATED && blockingThreadState != CANCELLED)
             {
-                fprintf(stddebug, "\nLOG: Blocked Thread %ld is still blocked on Thread %ld with state %d, %d", frontThread->threadID, blockingThreads->thread->threadID, blockingThreads->thread->state, TERMINATED); 
+  //              fprintf(stddebug, "\nLOG: Blocked Thread %ld is still blocked on Thread %ld with state %d, %d", frontThread->threadID, blockingThreads->thread->threadID, blockingThreads->thread->state, TERMINATED); 
                 blockingThreadsCompleted = 0;
                 break; 
             }
@@ -293,7 +293,7 @@ void schedulerFunction()
 
           if(blockingThreadsCompleted)
           {
-              fprintf(stddebug, "\nLOG: Block Thread Unblocked : %ld", frontThread->threadID);
+    //          fprintf(stddebug, "\nLOG: Block Thread Unblocked : %ld", frontThread->threadID);
               selectedThread = frontThread;
           }
       }
@@ -345,7 +345,7 @@ void gtthread_exit(void *retval)
     gtthread_t* thread = getRunningThread();
     gtthread_node* ptr = readyQueue->front;
 
-    fprintf(stddebug, "\nReturn Value Received for thread %ld is %d", thread->threadID, (int)retval);
+    //fprintf(stddebug, "\nReturn Value Received for thread %ld is %d", thread->threadID, (int)retval);
     thread->returnValue = retval;
 
     //fprintf(stddebug, "\nReturn Value Saved is %d", (int)thread->returnValue);
@@ -442,7 +442,7 @@ int gtthread_join(gtthread_t thread, void **status)
     gtthread_t *runningThread, *joineeThread = getThreadByID(thread.threadID);
     int abc;
 
-    fprintf(stddebug, "\nLOG: Entered Join");
+    //fprintf(stddebug, "\nLOG: Entered Join");
 
     if(joineeThread == NULL)
     {
@@ -452,14 +452,14 @@ int gtthread_join(gtthread_t thread, void **status)
 
     runningThread = getRunningThread();
 
-    if(runningThread == NULL)
-        fprintf(stddebug, "\nRunning Thread is %d", runningThread);
-    else
-        fprintf(stddebug, "\nRunning Thread is %ld", runningThread->threadID);
+   // if(runningThread == NULL)
+   //     fprintf(stddebug, "\nRunning Thread is %d", runningThread);
+   // else
+     //   fprintf(stddebug, "\nRunning Thread is %ld", runningThread->threadID);
 
     runningThread->state = WAITING;
 
-    fprintf(stddebug, "\nRunning Thread: Blocking Thread %u", &(runningThread->blockingThreads));
+//    fprintf(stddebug, "\nRunning Thread: Blocking Thread %u", &(runningThread->blockingThreads));
     appendThread(&(runningThread->blockingThreads), joineeThread);
 
     //fprintf(stddebug, "\nLOG: Appending blocking thread %ld", thread.threadID);
