@@ -22,8 +22,8 @@ static ucontext_t mainContext;
 static ucontext_t schedulerContext;
 static gtthread_t* mainThread;
 
-gtthread_node* listOfThreads = NULL;
-gtthread_queue* readyQueue = NULL;
+static gtthread_node* listOfThreads = NULL;
+static gtthread_queue* readyQueue = NULL;
 
 
 gtthread_t* getRunningThread();

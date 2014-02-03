@@ -87,7 +87,7 @@ void displayQueue(gtthread_queue* queue)
 		ptr = ptr->link;
 	}
 
- // fprintf(stddebug, "\nLOG: End of Queue");
+  fprintf(stddebug, "\nLOG: End of Queue");
 
 }
 

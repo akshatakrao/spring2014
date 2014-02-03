@@ -7,9 +7,13 @@
 //#include<gtthread_scheduler.h>
 #include<string.h>
 
+int a = 300;
+
 int trial1()
 {
 	fprintf(stderr,"\nLOG: In trial thread 1");
+
+  return a;
 }
 
 int trial2()
@@ -105,18 +109,18 @@ gtthread_t *joinee;
 void joinFunction()
 {
     fprintf(stddebug, "\nLOG: Im in JOIN");
-    void **retVal;
+    void *thread_return = NULL;
   
 
-    gtthread_join(*joinee, retVal);
-    fprintf(stddebug, "\nAfter Join Returns");
-    
-    int a;
-    scanf("%d", &a);
+    gtthread_join(*joinee, &thread_return);
+    //fprintf(stddebug, "\nAfter Join Returns %d %d %d", joinee->state, (int)joinee->returnValue, *(int*) &thread_return);
+
+    exit(1);   
 }
 void test_join()
 {
   gtthread_t *thread1, *thread2;
+
 	int a = 3;
 	void *arg;
 
@@ -129,7 +133,7 @@ void test_join()
   joinee = (gtthread_t*)malloc(sizeof(gtthread_t));
 	gtthread_create(joinee, &trial1, arg);
    
-  fprintf(stderr, "\nWhats up?");
+  //fprintf(stderr, "\nWhats up? %d %d", (int) thread1->returnValue, (int) joinee->returnValue);
   while(1)
   {
   } 
