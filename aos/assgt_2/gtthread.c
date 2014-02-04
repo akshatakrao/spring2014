@@ -11,9 +11,13 @@
  * Sets context to Main Context
  */
 void mainThreadContextSwitcher()
-{    setcontext(&mainContext);
-     fprintf(stderr, "\nLOG: Im here");
-     exit(0);
+{   
+   //ucontext_t mainCallerContext; 
+    //getcontext(&mainCallerContext);
+    //mainOrigContext.uc_link = &mainCallerContext; 
+    setcontext(&mainOrigContext);
+     //fprintf(stderr, "\nLOG: Im here");
+     exit(100);
 }
 
 int entered = 0;
@@ -82,7 +86,7 @@ void gtthread_init(long period)
   fprintf(stddebug, "\nLOG: Set Scheduler Handler");
 
   //Insert calling function to the scheduler Queue
-  if(getcontext(&mainContext) != 0)
+  if(getcontext(&mainOrigContext) != 0)
   {
       fprintf(stderr, "\nAn error occurred while setting context");
       exit(1);
@@ -93,15 +97,15 @@ void gtthread_init(long period)
   mainContext.uc_stack.ss_sp = malloc(STACK_SIZE);
   mainContext.uc_stack.ss_size = STACK_SIZE;
   mainContext.uc_stack.ss_flags = 0;
-  mainContext.uc_link = NULL;//&schedulerContext;
-//  makecontext(&mainContext, &mainThreadContextSwitcher, 0);
+  mainContext.uc_link = NULL;//&mainContext;//&schedulerContext;
+  makecontext(&mainContext, &mainThreadContextSwitcher, 0);
 
   //fprintf(stddebug, "\nLOG: Allocate Main Context");
 
   mainThread = (gtthread_t*)malloc(sizeof(gtthread_t));
   mainThread->threadID = threadCtr++;
   mainThread->state = RUNNING;
-  mainThread->context = mainContext;
+  mainThread->context = mainOrigContext;
   currentThread = mainThread; 
   fprintf(stddebug, "\nLOG: Create Main Thread: %ld", mainThread->threadID);
 
@@ -468,7 +472,7 @@ int  gtthread_mutex_lock(gtthread_mutex_t *mutex)
 
        while(1)
        {
-            
+            fprintf(stddebug, "Here");
            if(mutex->threadID < 0)
            {
                break;

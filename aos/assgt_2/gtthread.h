@@ -19,6 +19,7 @@ static long quantum_size = 0;
 static int threadCtr = 0;
 static int mutexCtr = 0;
 
+static ucontext_t mainOrigContext;
 static ucontext_t mainContext;
 static ucontext_t schedulerContext;
 static gtthread_t* mainThread;

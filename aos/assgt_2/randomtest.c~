@@ -21,7 +21,7 @@ void* producer(void* arg)
 		++g_num;
 		gtthread_mutex_unlock(&g_mutex);
 
-		for(j=0; j < rand() % 999999; ++j);
+		for(j=0; j < rand() % 99; ++j);
 	}
 }
 
@@ -63,5 +63,6 @@ int main()
 		fprintf(stderr, "SUCCESS!");
 	}
 	
+//	exit(1);
 	return 0;
 }
