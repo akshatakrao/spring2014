@@ -115,7 +115,7 @@ void joinFunction()
     gtthread_join(*joinee, &thread_return);
     //fprintf(stddebug, "\nAfter Join Returns %d %d %d", joinee->state, (int)joinee->returnValue, *(int*) &thread_return);
 
-    exit(1);   
+   // exit(1);   
 }
 void test_join()
 {

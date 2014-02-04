@@ -12,38 +12,46 @@
  */
 void mainThreadContextSwitcher()
 {    setcontext(&mainContext);
+     fprintf(stderr, "\nLOG: Im here");
+     exit(0);
 }
 
-int entered = 0, counter = 0;
+int entered = 0;
 gtthread_t* currentThread = NULL;
+
 /*
  *
  *Init GTThreads
  */
 void gtthread_init(long period)
 {   
-    if(entered == 0)
-    {
-      fprintf(stderr, "\nLOG: Entered");
-     entered = 1;
-   }
-   else
+
+   //Check for first entry 
+   if(entered == 0)
    {
-      fprintf(stderr, "\nLOG: Tried to enter again");  
+     // fprintf(stddebug, "\nLOG: Entered");
+      entered = 1;
+   }
+   else //Error handling
+   {
+      //fprintf(stderr, "\nLOG: Tried to enter again");  
       return;
    }
 
+   //Create Debug File
    createDebugFile();
 
+   //Set Quantum to Period
    quantum_size = period;
-   fprintf(stddebug,"\nLOG: Set Quantum to %ld", period);
+   //fprintf(stddebug,"\nLOG: Set Quantum to %ld", period);
 
-	//Initialize Ready queue
-  readyQueue = (gtthread_queue*)malloc(sizeof(gtthread_queue));
+	 //Initialize Ready queue
+   readyQueue = (gtthread_queue*)malloc(sizeof(gtthread_queue));
    initQueue(&readyQueue); 
    fprintf(stddebug, "\nLOG: Initialized Ready Queue"); 
     
 	//Initialize the scheduler
+  /*
 	if (getcontext(&schedulerContext) == 0) 
 	{
 		schedulerContext.uc_stack.ss_sp = malloc(STACK_SIZE);
@@ -56,7 +64,7 @@ void gtthread_init(long period)
 	} else {
 		fprintf(stddebug, "\nAn error occurred while initializing scheduler context");
 		exit(1);
-	}
+	}*/
 
   //Initialize timeSlice
   timeSlice.it_value.tv_sec = 0; 
@@ -79,16 +87,16 @@ void gtthread_init(long period)
       fprintf(stderr, "\nAn error occurred while setting context");
       exit(1);
   }
-  fprintf(stddebug, "\nLOG: Set Calling Function in Main Context");
+  //fprintf(stddebug, "\nLOG: Set Calling Function in Main Context");
   
   //START: make main function as gtthread
   mainContext.uc_stack.ss_sp = malloc(STACK_SIZE);
   mainContext.uc_stack.ss_size = STACK_SIZE;
   mainContext.uc_stack.ss_flags = 0;
   mainContext.uc_link = NULL;//&schedulerContext;
-  makecontext(&mainContext, &mainThreadContextSwitcher, 0);
+//  makecontext(&mainContext, &mainThreadContextSwitcher, 0);
 
-  fprintf(stddebug, "\nLOG: Allocate Main Context");
+  //fprintf(stddebug, "\nLOG: Allocate Main Context");
 
   mainThread = (gtthread_t*)malloc(sizeof(gtthread_t));
   mainThread->threadID = threadCtr++;
@@ -97,24 +105,20 @@ void gtthread_init(long period)
   currentThread = mainThread; 
   fprintf(stddebug, "\nLOG: Create Main Thread: %ld", mainThread->threadID);
 
+  //Add Main thread to ready queue
   addThreadToQueue(&readyQueue,mainThread);
-  //appendThread(&listOfThreads, mainThread);
   fprintf(stddebug, "\nLOG: Added Main Thread to List and Queue");
 
+  //Set timer for scheduler
   setitimer(ITIMER_REAL, &timeSlice, NULL); 
   //END:
 
-  counter++;
-  fprintf(stddebug, "\nLOG: Counter: %d",counter);
-
- // while(1);
-  //schedulerFunction();
   fprintf(stddebug, "\nLOG: Completed Initialization");
   
 }	
 
 /**
- * Wrapper Function
+ * Wrapper Function around a thread's function call
  */
 void wrapperFunction(void*(*start_routine)(void*), void* arg)
 {
@@ -129,16 +133,12 @@ void wrapperFunction(void*(*start_routine)(void*), void* arg)
     runningThread = getRunningThread();
 //    fprintf(stddebug, "\nReturn Value is %d", (int) retValue);
 
+    //Exit with function return value
     gtthread_exit(retValue);
-    //runningThread->state = TERMINATED;
-    
-    //runningThread->returnValue = retValue;
-//    fprintf(stddebug, "\nLOG: Calling scheduler");
 
     setitimer(ITIMER_REAL, &timeSlice, NULL);
-    
-    schedulerFunction();
-    //gtthread_cancel(*runningThread);
+    schedulerFunction();//Fail safe for the scheduler
+
 }
 
 
@@ -163,27 +163,21 @@ int  gtthread_create(gtthread_t *thread, void *(*start_routine)(void *), void *a
   thread->childthreads = NULL;
   thread->blockingThreads = NULL;
 
-  //Set context
+  //Create thread context structure
   getcontext(&(thread->context));
   thread->context.uc_stack.ss_sp = malloc(STACK_SIZE);
   thread->context.uc_stack.ss_size = STACK_SIZE;
   thread->context.uc_stack.ss_flags = 0;
-  thread->context.uc_link = NULL;//&schedulerContext;
-//  thread->blockingThreads = NULL;
-
-  //TODO: Check on number of arguments
+  thread->context.uc_link = NULL;
 
   makecontext(&(thread->context), (void (*)(void))&wrapperFunction, 2, start_routine, arg);
 
   //Add thread to ready Queue
   addThreadToQueue(&readyQueue, thread);
-
-  //add thread to list of threads
-  //appendThread(&listOfThreads, thread);
 }
 
 /**
- * Get Running thread
+ * Get Currently Running thread
  */
 gtthread_t* getRunningThread()
 {
@@ -233,54 +227,49 @@ int main2();
 
 int main2()
 {
-//  test_join();  
+  test_join();  
 //	test_exit();
-test_init();
+//test_init();
 }
 
-
-static int firstEntry = 0;
 
 /**
  * Scheduler Function
  */
-
-
 void schedulerFunction()
 {
     gtthread_t* frontThread, *selectedThread = NULL, *prevThread;
     gtthread_node* blockingThreads;  
 
+    //Display the state of the Ready queue (Thread ID, Thread State) Front-> Back
     displayQueue(readyQueue);
 
-
-
+    //Switch the currently running thread's state to Ready
     if(currentThread->state == RUNNING)
         currentThread->state = READY;
 
     int count = 0;
 //    fprintf(stddebug, "\nLOG: Ready Queue: %d", readyQueue->count);
 
+    //Iterate through the threads in the queue
     while(count < readyQueue->count)
     {     
       frontThread = removeThreadFromQueue(&readyQueue);
 
       //fprintf(stddebug, "\nFront Thread %u: ", frontThread);
 
+      //If the thread is suspended
       if(frontThread->state == WAITING)
       {
           blockingThreads = frontThread->blockingThreads;
 
           int blockingThreadsCompleted = 1;
 
-        //  fprintf(stddebug, "\nBlocking Threads in here");
-
+          //Check if all the blocking threads have completed
           while(blockingThreads != NULL)
           {
-          //  fprintf(stddebug, "\nWhats up");  
             gtthread_state blockingThreadState = getThreadState(blockingThreads->thread->threadID);
 
-//            fprintf(stddebug, "\nAfter whats up");
             if(blockingThreadState != TERMINATED && blockingThreadState != CANCELLED)
             {
   //              fprintf(stddebug, "\nLOG: Blocked Thread %ld is still blocked on Thread %ld with state %d, %d", frontThread->threadID, blockingThreads->thread->threadID, blockingThreads->thread->state, TERMINATED); 
@@ -296,7 +285,7 @@ void schedulerFunction()
     //          fprintf(stddebug, "\nLOG: Block Thread Unblocked : %ld", frontThread->threadID);
               selectedThread = frontThread;
           }
-      }
+      }//Else, select the next ready thread
       else if(frontThread->state == READY)
       {
           selectedThread = frontThread;
@@ -320,7 +309,7 @@ void schedulerFunction()
 }
 
 /**
- *
+ * Get The Thread State
  */
 gtthread_state getThreadState(long threadID)
 {
@@ -338,7 +327,7 @@ gtthread_state getThreadState(long threadID)
 }
 
 /*
-
+ Exit the Thread
  */
 void gtthread_exit(void *retval)
 {
@@ -351,12 +340,12 @@ void gtthread_exit(void *retval)
     //fprintf(stddebug, "\nReturn Value Saved is %d", (int)thread->returnValue);
     thread->state = TERMINATED;
 
-    if(thread->threadID == 0)
+    //If the main thread is exiting
+/*    if(thread->threadID == 0)
     { 
-        fprintf(stddebug, "\nLOG: Calling exit on the main function. Kill all child threads %d", ptr);
-        exit(retval);
+        fprintf(stddebug, "\nLOG: Calling exit on the main function. Kill all child threads");
+        exit((int)retval);
 
-    //    sleep(10);
        /* while(ptr != NULL)
         {
             ptr = readyQueue->front;
@@ -370,12 +359,13 @@ void gtthread_exit(void *retval)
             ptr = ptr->link;
         }*/
         
-    }
-    else
+   // }
+   // else
     {
         fprintf(stddebug, "\nLOG: Called Exit on Non-Main. Exit value returned to Joined thread");
     }
-  
+ 
+    //Call the schedulerFunction 
     schedulerFunction();
 
 }
@@ -398,22 +388,21 @@ int gtthread_cancel(gtthread_t thread)
   int dummyValue = CANCELLED;
   gtthread_t* threadptr;
 
-      if(thread.threadID == 0)
-    { 
-        fprintf(stddebug, "\nLOG: Calling exit on the main function. Kill all child threads");
-        exit(CANCELLED);
-    }
+  //If the thread is a main thread, exit with the CANCELLED return value
+  if(thread.threadID == 0)
+  { 
+     fprintf(stddebug, "\nLOG: Calling exit on the main function. Kill all child threads");
+     exit(CANCELLED);
+  }
 
 
   threadptr = getThreadByID(thread.threadID);
   threadptr->state = TERMINATED;
   threadptr->returnValue = dummyValue;
-  //gtthread_exit(&dummyValue);
-
 }
 
 /**
- *
+ * Obtain the thread structure pointer using the thread ID
  */
 gtthread_t* getThreadByID(long threadID)
 {
@@ -433,14 +422,123 @@ gtthread_t* getThreadByID(long threadID)
     return NULL;
 }
 
+/**
+ * Initialize the mutex
+ */
+int  gtthread_mutex_init(gtthread_mutex_t *mutex)
+{
+    if(mutex == NULL)
+    {
+        fprintf(stddebug,"\nLOG: Cannot pass null parameter to initialization of mutex");
+        return 1;
+    }
+    else
+    {
+       mutex->mutexID = mutexCtr++; 
+       mutex->threadID = INIT_THREAD_ID;
+    }
+}
+
+
 
 /**
- *
+ * Lock the Thread Mutex
+ */
+int  gtthread_mutex_lock(gtthread_mutex_t *mutex)
+{
+   //Signaling mask
+    gtthread_t* thread = getRunningThread();
+    int returnValue, yield = 0;
+    sigset_t newset;
+    
+    sigemptyset(&newset);
+    sigaddset(&newset, SIGALRM);
+    sigprocmask(SIG_SETMASK, &newset, NULL);
+     
+    if(mutex == NULL)
+    {
+        fprintf(stddebug,"\nLOG: Cannot pass null parameter to lock");
+        returnValue  = 1;
+    }
+    else if (mutex->threadID > 0)
+    {
+       fprintf(stddebug, "\nLOG: Mutex %d already acquired by thread %ld", mutex->mutexID, thread->threadID);
+
+       yield = 1;
+
+       while(1)
+       {
+            
+           if(mutex->threadID < 0)
+           {
+               break;
+           }
+           else
+           {
+               sigemptyset(&newset);
+               gtthread_yield();
+           }
+
+       }
+
+       fprintf(stddebug, "\nLOG: Mutex %d being acquired by thread %ld", mutex->mutexID, thread->threadID);
+       mutex->threadID = thread->threadID;
+       returnValue = 0;
+    }
+    else
+    { 
+       fprintf(stddebug, "\nLOG: Mutex %d being acquired by thread %ld", mutex->mutexID, thread->threadID);
+       mutex->threadID =  thread->threadID;
+       returnValue = 0;
+    } 
+   
+    sigemptyset(&newset);
+
+    return returnValue;
+   //Signaling mask ends
+}
+
+
+/**
+ * Unlock the Thread Mutex
+ */
+int  gtthread_mutex_unlock(gtthread_mutex_t *mutex)
+{
+    gtthread_t* thread = getRunningThread();
+    int returnValue;
+    sigset_t newset;
+
+    sigemptyset(&newset);
+    sigaddset(&newset, SIGALRM);
+    sigprocmask(SIG_SETMASK, &newset, NULL);
+
+    //signal starts here
+    if(mutex == NULL)
+    {
+        fprintf(stddebug,"\nLOG: Cannot pass null parameter to lock");
+        returnValue  = 1;
+    }
+    else if(thread->threadID != mutex->threadID)
+    {
+        fprintf(stddebug, "\nLOG:Thread %ld trying to unlock a mutex %d it does not own", thread->threadID, mutex->mutexID);
+        returnValue = 1;
+    }
+    else if(thread->threadID == mutex->threadID)
+    {
+        fprintf(stddebug, "\nLOG: Thread %ld unlocking a mutex %d that it owns", thread->threadID, mutex->mutexID);
+        mutex->threadID = INIT_THREAD_ID; 
+    }
+
+    sigemptyset(&newset);  
+    //signal ends here
+}
+
+/**
+ * Thread Join 
  */
 int gtthread_join(gtthread_t thread, void **status)
 {
     gtthread_t *runningThread, *joineeThread = getThreadByID(thread.threadID);
-    int abc;
 
     //fprintf(stddebug, "\nLOG: Entered Join");
 
@@ -451,15 +549,8 @@ int gtthread_join(gtthread_t thread, void **status)
     }
 
     runningThread = getRunningThread();
-
-   // if(runningThread == NULL)
-   //     fprintf(stddebug, "\nRunning Thread is %d", runningThread);
-   // else
-     //   fprintf(stddebug, "\nRunning Thread is %ld", runningThread->threadID);
-
     runningThread->state = WAITING;
 
-//    fprintf(stddebug, "\nRunning Thread: Blocking Thread %u", &(runningThread->blockingThreads));
     appendThread(&(runningThread->blockingThreads), joineeThread);
 
     //fprintf(stddebug, "\nLOG: Appending blocking thread %ld", thread.threadID);
@@ -472,16 +563,25 @@ int gtthread_join(gtthread_t thread, void **status)
     }
   */    
 
-//    fprintf(stddebug, "\nLOG: Reached here");
 
     if(status != NULL) 
     {
         *status = (joineeThread)->returnValue; 
     }
-//    fprintf(stddebug, "\nLOG: Not here");
-    //displayQueue(readyQueue);
     //fprintf(stddebug, "\nThread Join Return Value: %d", (int) joineeThread->returnValue);
     
 }
 
-
+/* TODO:
+ *
+ * 1. replace scheduler function with setitimer
+ * 2. Re test gthread_exit for main
+ * 3. Make File
+ * 4. Read memset
+ * 5. mutex
+ * 6. Dining Philosopher
+ * 7. All test cases in Rubric
+ * 8. Write Up
+ * 9. Change timer to PROF
+ *
+ * */

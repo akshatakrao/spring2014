@@ -14,6 +14,10 @@ void printMain();
 
 int main()
 {
+    void* a;
+    a = 5;
+    printf("%d", (void*)a);
+/*
     timeslice.it_value.tv_sec = 0;
     timeslice.it_value.tv_usec = 500000;
     timeslice.it_interval = timeslice.it_value;
@@ -25,7 +29,7 @@ int main()
     setitimer(ITIMER_VIRTUAL, &timeslice, NULL);
 
     while(1);
-       
+ */      
 }
 
 void printMain()

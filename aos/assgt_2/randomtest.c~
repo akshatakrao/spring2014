@@ -1,46 +1,67 @@
-// Test4
-// Thread create chaining.
-// The program should print out liek below when CHAIN_LEN is 20.
-//
-// worker1 starts
-// worker2 starts
-// ...
-// worker20 starts
-// worker20 ends
-// worker19 ends
-// ...
-// worker 1 ends
+// Test10
+// Producer and consumer.
 
 #include <stdio.h>
+#include <time.h>
 #include <gtthread.h>
 
-#define CHAIN_LEN 20
+#define LOOP 10
 
-void* worker(void* arg)
+gtthread_t g_th1, g_th2;
+gtthread_mutex_t g_mutex;
+int g_num = 0;
+
+void* producer(void* arg)
 {
-	gtthread_t th;
+	int i, j;
 
-	long id = (long) arg;
-	printf("worker%ld starts\n", id);
-	if (id < CHAIN_LEN) {
-		gtthread_create(&th, worker, (void*) (id + 1));
-		gtthread_join(th, NULL);
+	for(i=0; i < LOOP; i++)
+	{
+		gtthread_mutex_lock(&g_mutex);
+		++g_num;
+		gtthread_mutex_unlock(&g_mutex);
+
+		for(j=0; j < rand() % 999999; ++j);
 	}
-	printf("worker%ld ends\n", id);
-	exit(2);
+}
+
+void* consumer(void* arg)
+{
+	int i, j;
+
+	for(i=0; i < LOOP; i++)
+	{
+		gtthread_mutex_lock(&g_mutex);
+		--g_num;
+		gtthread_mutex_unlock(&g_mutex);
+
+		for(j=0; j < rand() % 999999; ++j);
+	}
 }
 
 int main()
 {
-	gtthread_t th;
+	gtthread_t th1, th2;
+
+	srand(time(NULL));
 
 	gtthread_init(1000);
-	gtthread_create(&th, worker, (void*) 1);
-	gtthread_join(th, NULL);
 
-	while(1)
-	{
-			;
+	gtthread_mutex_init(&g_mutex);
+
+	gtthread_create(&th1, producer, NULL);
+	gtthread_create(&th2, consumer, NULL);
+
+	gtthread_join(th1, NULL);
+	gtthread_join(th2, NULL);
+
+	if (g_num != 0) {
+		fprintf(stderr, "!ERROR! Wrong result! %d != 0\n", g_num);
 	}
+	else
+	{
+		fprintf(stderr, "SUCCESS!");
+	}
+	
 	return 0;
 }

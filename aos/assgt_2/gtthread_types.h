@@ -42,12 +42,23 @@ typedef struct gtthread
   void *returnValue;	
 }gtthread_t;
 
-
+/**
+ * Thread Node Structure
+ */
 typedef struct thread_node
 {
   gtthread_t *thread;
   struct thread_node *link;
 
 }gtthread_node;
+
+/**
+ * Thread Mutex Structure
+ */
+typedef struct thread_mutex
+{
+    int mutexID;
+    long threadID;
+}gtthread_mutex_t;
 
 #endif
