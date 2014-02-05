@@ -17,7 +17,7 @@ void mainThreadContextSwitcher()
     //mainOrigContext.uc_link = &mainCallerContext; 
     setcontext(&mainOrigContext);
      //fprintf(stderr, "\nLOG: Im here");
-     exit(100);
+//     exit(100);
 }
 
 int entered = 0;
@@ -98,23 +98,24 @@ void gtthread_init(long period)
   mainContext.uc_stack.ss_size = STACK_SIZE;
   mainContext.uc_stack.ss_flags = 0;
   mainContext.uc_link = NULL;//&mainContext;//&schedulerContext;
-  makecontext(&mainContext, &mainThreadContextSwitcher, 0);
+  //makecontext(&mainContext, &mainThreadContextSwitcher, 0);
 
   //fprintf(stddebug, "\nLOG: Allocate Main Context");
 
   mainThread = (gtthread_t*)malloc(sizeof(gtthread_t));
   mainThread->threadID = threadCtr++;
   mainThread->state = RUNNING;
-  mainThread->context = mainOrigContext;
+  //mainThread->context = mainOrigContext;
   currentThread = mainThread; 
   fprintf(stddebug, "\nLOG: Create Main Thread: %ld", mainThread->threadID);
 
   //Add Main thread to ready queue
   addThreadToQueue(&readyQueue,mainThread);
   fprintf(stddebug, "\nLOG: Added Main Thread to List and Queue");
-
+  getcontext(&(mainThread->context));
   //Set timer for scheduler
-  setitimer(ITIMER_REAL, &timeSlice, NULL); 
+  setitimer(ITIMER_REAL, &timeSlice, NULL);
+  //NEW ENTRY: Check IF WORKS
   //END:
 
   fprintf(stddebug, "\nLOG: Completed Initialization");
@@ -246,7 +247,7 @@ void schedulerFunction()
     gtthread_node* blockingThreads;  
 
     //Display the state of the Ready queue (Thread ID, Thread State) Front-> Back
-    displayQueue(readyQueue);
+    //displayQueue(readyQueue);
 
     //Switch the currently running thread's state to Ready
     if(currentThread->state == RUNNING)

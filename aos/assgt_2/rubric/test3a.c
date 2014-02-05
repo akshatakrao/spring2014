@@ -4,13 +4,12 @@
 void printHello(int a)
 {
    int i = 0;
-   while(i < 9999999)
+   while(i < 10000)
   {	
   	fprintf(stderr, "\nThread 1 %d ", a);
 	i++;
   }
  
-  //exit(5);	
 }
 
 int main()
@@ -20,7 +19,7 @@ int main()
   void* returnVal;	  
   gtthread_t *thread;
   
-  gtthread_init(500);
+  gtthread_init(50000);
   
   thread = (gtthread_t*)malloc(sizeof(gtthread_t));
 	gtthread_create(thread, &printHello, 32);
@@ -28,7 +27,7 @@ int main()
   //gtthread_join(*thread, &returnVal);
 
  	
-  while(a < 10)
+  while(a < 99999)
   {  
   	fprintf(stderr, "\nLOG:Main exiting");
 	a++;
