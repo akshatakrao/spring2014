@@ -6,6 +6,7 @@
 #include<stdlib.h>
 #include<string.h>
 #include<gtthread_test.h>
+#include<gtthread_mutex_list.h>
 
 /**
  * Sets context to Main Context
@@ -167,6 +168,7 @@ int  gtthread_create(gtthread_t *thread, void *(*start_routine)(void *), void *a
 
   thread->childthreads = NULL;
   thread->blockingThreads = NULL;
+  thread->ownedMutexes = NULL;
 
   //Create thread context structure
   getcontext(&(thread->context));
@@ -365,12 +367,20 @@ void gtthread_exit(void *retval)
 {
     gtthread_t* thread = getRunningThread();
     gtthread_node* ptr = readyQueue->front;
+    gtthread_mutex_node* mutexList = thread->ownedMutexes;
 
     //fprintf(stddebug, "\nReturn Value Received for thread %ld is %d", thread->threadID, (int)retval);
     thread->returnValue = retval;
 
     //fprintf(stddebug, "\nReturn Value Saved is %d", (int)thread->returnValue);
     thread->state = TERMINATED;
+
+    //Giving up ownership of all mutexes
+    while(mutexList != NULL)
+    {
+        gtthread_mutex_unlock(mutexList->mutex);
+        mutexList = mutexList->link;
+    }
 
     //If the main thread is exiting
 /*    if(thread->threadID == 0)
@@ -493,6 +503,11 @@ int  gtthread_mutex_lock(gtthread_mutex_t *mutex)
         fprintf(stddebug,"\nLOG: Cannot pass null parameter to lock");
         returnValue  = 1;
     }
+    else if(mutex->threadID == thread->threadID)
+    {
+      fprintf(stddebug, "\nLOG: Mutex %d already acquired previously by calling thread", mutex->mutexID);
+      returnValue = 0;
+    }
     else if (mutex->threadID > 0)
     {
        fprintf(stddebug, "\nLOG: Mutex %d already acquired by thread %ld", mutex->mutexID, thread->threadID);
@@ -515,12 +530,17 @@ int  gtthread_mutex_lock(gtthread_mutex_t *mutex)
        }
 
        fprintf(stddebug, "\nLOG: Mutex %d being acquired by thread %ld", mutex->mutexID, thread->threadID);
-       mutex->threadID = thread->threadID;
-       returnValue = 0;
+       
+        appendMutex(&(thread->ownedMutexes), mutex);
+        mutex->threadID = thread->threadID;
+        returnValue = 0;
+
     }
     else
     { 
        fprintf(stddebug, "\nLOG: Mutex %d being acquired by thread %ld", mutex->mutexID, thread->threadID);
+       
+       appendMutex(&(thread->ownedMutexes), mutex);
        mutex->threadID =  thread->threadID;
        returnValue = 0;
     } 
@@ -559,7 +579,8 @@ int  gtthread_mutex_unlock(gtthread_mutex_t *mutex)
     else if(thread->threadID == mutex->threadID)
     {
         fprintf(stddebug, "\nLOG: Thread %ld unlocking a mutex %d that it owns", thread->threadID, mutex->mutexID);
-        mutex->threadID = INIT_THREAD_ID; 
+        mutex->threadID = INIT_THREAD_ID;
+        deleteMutex(&(thread->ownedMutexes), mutex->mutexID); 
     }
 
     sigemptyset(&newset);  

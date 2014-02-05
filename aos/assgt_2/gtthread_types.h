@@ -32,7 +32,8 @@ typedef struct gtthread
   //Thread forked Children
   struct thread_node* childthreads;
   struct thread_node* blockingThreads;
- 
+  struct thread_mutex_node* ownedMutexes;
+
   //Pointer to function that has thread functionality
   void* (*runfunction)(void *);   
   
@@ -60,5 +61,12 @@ typedef struct thread_mutex
     int mutexID;
     long threadID;
 }gtthread_mutex_t;
+
+typedef struct thread_mutex_node
+{
+    gtthread_mutex_t* mutex;
+    struct thread_mutex_node *link;
+
+}gtthread_mutex_node;
 
 #endif
