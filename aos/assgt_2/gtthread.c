@@ -247,21 +247,21 @@ void schedulerFunction()
     gtthread_node* blockingThreads;  
 
     //Display the state of the Ready queue (Thread ID, Thread State) Front-> Back
-    //displayQueue(readyQueue);
+    displayQueue(readyQueue);
 
     //Switch the currently running thread's state to Ready
     if(currentThread->state == RUNNING)
         currentThread->state = READY;
 
     int count = 0;
-//    fprintf(stddebug, "\nLOG: Ready Queue: %d", readyQueue->count);
+    //fprintf(stddebug, "\nLOG: Ready Queue: %d", readyQueue->count);
 
     //Iterate through the threads in the queue
     while(count < readyQueue->count)
     {     
       frontThread = removeThreadFromQueue(&readyQueue);
 
-      //fprintf(stddebug, "\nFront Thread %u: ", frontThread);
+      fprintf(stddebug, "\nFront Thread %u: ", frontThread->threadID);
 
       //If the thread is suspended
       if(frontThread->state == WAITING)
@@ -304,6 +304,33 @@ void schedulerFunction()
     }
 
 
+    if(selectedThread == NULL)
+    {
+           //Run through the threads till you find the first waiting Thread
+
+          count = 0;
+
+          while(count < readyQueue->count)
+          {
+              frontThread = removeThreadFromQueue(&readyQueue);
+               
+              if(frontThread->state == WAITING)
+              {
+                  selectedThread = frontThread;
+                  break;      
+              }
+
+              count++;
+          }
+
+          if(selectedThread == NULL)
+          {
+              fprintf(stddebug, "\nAll threads terminated or canceled");
+              return;
+          }
+
+
+    }
     selectedThread->state = RUNNING;
     prevThread = currentThread;
     currentThread = selectedThread;
@@ -366,10 +393,10 @@ void gtthread_exit(void *retval)
         
    // }
    // else
-    {
+/*    {
         fprintf(stddebug, "\nLOG: Called Exit on Non-Main. Exit value returned to Joined thread");
     }
- 
+ */
     //Call the schedulerFunction 
     schedulerFunction();
 
@@ -455,11 +482,12 @@ int  gtthread_mutex_lock(gtthread_mutex_t *mutex)
     gtthread_t* thread = getRunningThread();
     int returnValue, yield = 0;
     sigset_t newset;
-    
+
     sigemptyset(&newset);
     sigaddset(&newset, SIGALRM);
     sigprocmask(SIG_SETMASK, &newset, NULL);
-     
+
+
     if(mutex == NULL)
     {
         fprintf(stddebug,"\nLOG: Cannot pass null parameter to lock");
@@ -547,10 +575,10 @@ int gtthread_join(gtthread_t thread, void **status)
 
     //fprintf(stddebug, "\nLOG: Entered Join");
 
-    if(joineeThread == NULL)
+    if(joineeThread == NULL || joineeThread->state == TERMINATED || joineeThread->state == CANCELLED)
     {
         fprintf(stderr, "\nERROR: Invalid Thread ID to join on: %ld", thread.threadID);
-        exit(1);
+        return 1;
     }
 
     runningThread = getRunningThread();
