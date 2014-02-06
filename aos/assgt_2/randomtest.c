@@ -1,67 +1,125 @@
 #include<stdio.h>
 #include<gtthread.h>
 
-gtthread_mutex_t* mutex;
+#define NO_OF_PHILOSOPHERS 5
 
-void thread1fn()
+typedef enum philState
 {
-	int i = 0;
-	gtthread_mutex_lock(mutex);	
-	gtthread_mutex_unlock(mutex);
+    EATING,
+    HUNGRY,
+    THINKING
+}state;
 
-	gtthread_mutex_lock(mutex);	
-	fprintf(stderr, "Im in thread1");	
-	gtthread_mutex_unlock(mutex);
+gtthread_mutex_t chopstickLock[NO_OF_PHILOSOPHERS];
+gtthread_mutex_t monitor;
+state philosopherState[NO_OF_PHILOSOPHERS];
+
+void checkIfCanEat(int i);
+void perform(int i);
+void attemptToEat(int i);
+void giveUpForks(int i);
+
+
+/**
+ * Philosopher ID
+ */
+void perform(int i)
+{
+    while(1)
+    {
+        //TO EMULATE THINKING
+        fprintf(stderr, "\nPhilosopher %d is now thinking", i);
+        sleep(5);
+        
+        //TRY TO  PICK CHOPSTICKS
+        fprintf(stderr, "\nPhilosopher %d is now hungry", i);
+      
+        attemptToEat(i);
+
+        fprintf(stderr, "\nPhilosopher %d is now eating", i);
+
+        sleep(3); //Assuming he takes 3 seconds to eating
+
+        giveUpForks(i);
+
+        //Philosopher resumes thinking
+     }
 
 }
 
-void thread2fn()
+void attemptToEat(int i)
 {
-	int i = 0;
-	gtthread_mutex_lock(mutex);	
-	gtthread_mutex_unlock(mutex);
+    //gtthread_mutex_lock(&monitor);
+   
+    philosopherState[i] = HUNGRY;
 
-	while(i< 9999)
-	{
-		i++;
-	}
+    checkIfCanEat(i);
 
-	gtthread_mutex_lock(mutex);	
-	fprintf(stderr, "Im in thread2");	
-	gtthread_mutex_unlock(mutex);
+    //gtthread_mutex_unlock(&monitor);
 
+    gtthread_mutex_lock(&chopstickLock[i]);
 }
 
+void giveUpForks(int i)
+{
+    int left, right;
+  //  gtthread_mutex_lock(&monitor);
+      
+    philosopherState[i] = THINKING;
+
+    left = (i + NO_OF_PHILOSOPHERS - 1)% NO_OF_PHILOSOPHERS;
+    right = (i) % NO_OF_PHILOSOPHERS;
+
+    checkIfCanEat(left);
+    checkIfCanEat(right);
+
+//    gtthread_mutex_unlock(&monitor);  
+}
+
+void checkIfCanEat(int i)
+{
+    int left, right;
+
+
+     right =(i) % NO_OF_PHILOSOPHERS;
+     left = (i + NO_OF_PHILOSOPHERS - 1)% NO_OF_PHILOSOPHERS;
+
+    if(philosopherState[i] == HUNGRY  && philosopherState[left] != EATING && philosopherState[right] != EATING)
+    {
+        philosopherState[i] == EATING;
+        gtthread_mutex_unlock(&chopstickLock[i]);
+    }
+
+}
 
 int main()
 {
+gtthread_t th1;
+	void* ret;
 
-  int a = 5;	
-  void* returnVal;	  
-  gtthread_t* thread1, *thread2;
- 
-  gtthread_init(50000);
-	 
-  mutex = (gtthread_mutex_t*)malloc(sizeof(gtthread_mutex_t));	
-  gtthread_mutex_init(mutex);	  
+//	gtthread_init(1000);
 
-  gtthread_mutex_lock(mutex);	
+    gtthread_t threads[NO_OF_PHILOSOPHERS];
+    int i = 0;
 
-  thread1 = (gtthread_t*)malloc(sizeof(gtthread_t));
-  gtthread_create(thread1, &thread1fn, NULL);
+    gtthread_init(100000);		
 
-  thread2 = (gtthread_t*)malloc(sizeof(gtthread_t));
-  gtthread_create(thread2, &thread2fn, NULL);
+    for (i = 0; i < NO_OF_PHILOSOPHERS; i++)
+    {
+        gtthread_mutex_init(&chopstickLock[i]);
+    }
 
-  fprintf(stderr, "Im in Main");	
-  gtthread_mutex_unlock(mutex);
+    for(i = 0; i < NO_OF_PHILOSOPHERS; i++)
+    {
+        //threads[i] = (gtthread_t*)malloc(sizeof(gtthread_t));
+        gtthread_create(&threads[i], &perform, (void*)i);
+    }
 
-  	
-  gtthread_join(*thread1, &returnVal);
-  gtthread_join(*thread2, &returnVal);
-	
-  fprintf(stderr, "im here");
-  
-  return 0;
+    while(1)
+	{
+		;
+	}	
+
+return 0;
 }
 

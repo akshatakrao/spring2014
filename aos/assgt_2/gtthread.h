@@ -79,6 +79,7 @@ gtthread_t* getThreadByID(long threadID);
 int  gtthread_mutex_init(gtthread_mutex_t *mutex);
 int  gtthread_mutex_lock(gtthread_mutex_t *mutex);
 int  gtthread_mutex_unlock(gtthread_mutex_t *mutex);
+int gtthread_mutex_trylock(gtthread_mutex_t* mutex);
 
 /* gtthread_mutex_destroy() and gtthread_mutex_trylock() do not need to be
  * implemented */

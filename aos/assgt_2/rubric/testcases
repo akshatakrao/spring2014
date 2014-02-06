@@ -1,4 +1,41 @@
-3b - Not working
+testcases
+1- ran
+2- threads cease to exist, should I still retain their return Value - pthread_join has a different behaviour. This testcase is against the rubric testcase. Works for 100 threads for a larger quantum
+3 - ran. incorrect success. other thread should not terminate. checked with pthread.
+4 - runs
+5- ran
+6 - ran
+7 - ran
+8 - ran
+9 - ran
+10 - runs when rand set to a constant
 
-3c?
+Rubric
+
+
+1a - done
+1b - done
+1c - done
+2a - done
+2b - done
+2c - done
+3a - done
+3b - Prob occurs that the time slice is such that..by the time slice finishes, the main completes. However, the scheduler also finishes off because there's no uc_link to the scheduler function. 
+3c - done
+3d - done
+4a - done
+4b - done
+4c - done
+4d - done
+4e - done
+5a - forgot
+5b  - done
+5c -done
+6a - done
+6b - forgot
+6c  - done
+7 - weird
+8a - done
+8b - done
+
 

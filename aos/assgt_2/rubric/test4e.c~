@@ -1,9 +1,8 @@
 #include<stdio.h>
 #include<gtthread.h>
 
-char* dummy()
+void dummy()
 {
-	fprintf(stderr, "Hello!");
 	return "hello!";
 }
 
@@ -27,7 +26,6 @@ int main()
   fprintf(stderr, "im here");
   
   gtthread_join(*thread1, &returnVal);
-  fprintf(stderr, "hehe");
   fprintf(stderr, "\nReturn value %s", (char*)returnVal); 
   return 0;
 }

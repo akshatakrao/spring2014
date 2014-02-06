@@ -10,6 +10,7 @@ typedef enum philState
     THINKING
 }state;
 
+
 gtthread_mutex_t* chopstickLock[NO_OF_PHILOSOPHERS];
 gtthread_mutex_t* monitor;
 state philosopherState[NO_OF_PHILOSOPHERS];
@@ -92,25 +93,18 @@ void checkIfCanEat(int i)
 
 }
 
+
 int main()
 {
-gtthread_t th1;
-	void* ret;
-
-	gtthread_init(1000);
-
-    gtthread_t threads[NO_OF_PHILOSOPHERS];
+    gtthread_t* threads[NO_OF_PHILOSOPHERS];
     int i = 0;
-
-    gtthread_init(5000);		
 
     for(i = 0; i < NO_OF_PHILOSOPHERS; i++)
     {
-        //threads[i] = (gtthread_t*)malloc(sizeof(gtthread_t));
-        gtthread_create(&threads[i], &perform, (void*)&i);
+        threads[i] = (gtthread_t*)malloc(sizeof(gtthread_t));
+        gtthread_create(threads[i], &perform, (void*)&i);
     }
 
-
-return 0;
+    return 0;
 }
 
