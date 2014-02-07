@@ -14,8 +14,8 @@ void thread1fn()
 		
 	}
 	counter++;
-	gtthread_t* thread2;
-	gtthread_t self;
+	gtthread_t* thread2, *self;
+	
 	thread2 = (gtthread_t*)malloc(sizeof(gtthread_t));
 	gtthread_create(thread2, &thread1fn, counter);
 	self = gtthread_self();
@@ -24,7 +24,7 @@ void thread1fn()
 
 	while(i< 10)
 	{
-		fprintf(stderr, "\nLOG: Thread %d %d", self.threadID , i);
+		fprintf(stderr, "\nLOG: Thread %d %d", self->threadID , i);
 		i++;
 	}
 
