@@ -26,17 +26,16 @@ gtthread_t* currentThread = NULL;
 void gtthread_init(long period)
 {   
 
-    printf("\nHERE!");
     
    //Check for first entry 
    if(entered == 0)
    {
-      fprintf(stderr, "\nLOG: Entered");
+   //   fprintf(stderr, "\nLOG: Entered");
       entered = 1;
    }
    else //Error handling
    {
-      fprintf(stderr, "\nLOG: Tried to enter again");  
+     // fprintf(stderr, "\nLOG: Tried to enter again");  
       return;
    }
 
@@ -45,7 +44,7 @@ void gtthread_init(long period)
 
    //Set Quantum to Period
    quantum_size = period;
-   fprintf(stddebug,"\nLOG: Set Quantum to %ld", period);
+   //fprintf(stddebug,"\nLOG: Set Quantum to %ld", period);
 
 	 //Initialize Ready queue
    readyQueue = (gtthread_queue*)malloc(sizeof(gtthread_queue));
@@ -112,7 +111,7 @@ void wrapperFunction(void*(*start_routine)(void*), void* arg)
     void* retValue;
     gtthread_t* runningThread = getRunningThread();
 
-//    fprintf(stddebug, "\nLOG: In wrapper function");
+    fprintf(stddebug, "\nLOG: In wrapper function %d", (int)arg);
     retValue = start_routine(arg);
 
   //  fprintf(stddebug, "\nCompleted calling function");
@@ -158,6 +157,7 @@ int  gtthread_create(gtthread_t *thread, void *(*start_routine)(void *), void *a
   thread->context.uc_stack.ss_flags = 0;
   thread->context.uc_link = NULL;
 
+
   makecontext(&(thread->context), (void (*)(void))&wrapperFunction, 2, start_routine, arg);
 
   //Add thread to ready Queue
@@ -172,8 +172,11 @@ gtthread_t* getRunningThread()
   gtthread_node* ptr = readyQueue->front;
   gtthread_t* thread = NULL;
 
-  while(ptr != NULL)
-  {
+
+  do
+  {     
+    while(ptr != NULL)
+    {
       //fprintf(stddebug, "\nLOG: GRunning Thread: %ld %d %d", ptr->thread->threadID, ptr->thread->state, RUNNING); 
       if(ptr->thread->state == RUNNING)
       {
@@ -182,7 +185,11 @@ gtthread_t* getRunningThread()
       }
 
       ptr = ptr->link;
-  }
+    }
+
+    schedulerFunction();
+  }while(thread == NULL);
+
 
   //fprintf(stddebug, "\nLOG: Running Thread Selected %ld", thread->threadID);
   return thread;
@@ -228,7 +235,7 @@ void schedulerFunction()
     gtthread_node* blockingThreads;  
 
     //Display the state of the Ready queue (Thread ID, Thread State) Front-> Back
-    displayQueue(readyQueue);
+    //displayQueue(readyQueue);
 
     //Switch the currently running thread's state to Ready
     if(currentThread->state == RUNNING)
@@ -268,7 +275,7 @@ void schedulerFunction()
 
           if(blockingThreadsCompleted)
           {
-    //          fprintf(stddebug, "\nLOG: Block Thread Unblocked : %ld", frontThread->threadID);
+              fprintf(stddebug, "\nLOG: Block Thread Unblocked : %ld", frontThread->threadID);
               selectedThread = frontThread;
           }
       }//Else, select the next ready thread
@@ -315,7 +322,7 @@ void schedulerFunction()
     selectedThread->state = RUNNING;
     prevThread = currentThread;
     currentThread = selectedThread;
-    fprintf(stddebug, "\nSetting context to Thread ID: %ld" ,selectedThread->threadID);
+   // fprintf(stddebug, "\nSetting context to Thread ID: %ld" ,selectedThread->threadID);
 
     setitimer(ITIMER_VIRTUAL, &timeSlice, NULL);
     swapcontext(&(prevThread->context),&(selectedThread->context));
@@ -375,7 +382,7 @@ void gtthread_exit(void *retval)
 int gtthread_yield(void)
 {
     setitimer(ITIMER_VIRTUAL, &timeSlice, NULL);
-    
+    schedulerFunction(); 
     return 0;
 }
 
@@ -460,6 +467,7 @@ int gtthread_mutex_trylock(gtthread_mutex_t* mutex)
       return 0;
 
     sigemptyset(&newset);
+    sigprocmask(SIG_SETMASK, &newset, NULL);
 }
 
 
@@ -485,12 +493,12 @@ int  gtthread_mutex_lock(gtthread_mutex_t *mutex)
     }
     else if(mutex->threadID == thread->threadID)
     {
-      fprintf(stddebug, "\nLOG: Mutex %d already acquired previously by calling thread\n", mutex->mutexID);
+      //fprintf(stddebug, "\nLOG: Mutex %d already acquired previously by calling thread\n", mutex->mutexID);
       returnValue = 0;
     }
     else if (mutex->threadID > 0)
     {
-       fprintf(stddebug, "\nLOG: Mutex %d already acquired by thread %ld", mutex->mutexID, thread->threadID);
+       //fprintf(stddebug, "\nLOG: Mutex %d already acquired by thread %ld", mutex->mutexID, thread->threadID);
 
        yield = 1;
 
@@ -502,13 +510,18 @@ int  gtthread_mutex_lock(gtthread_mutex_t *mutex)
            }
            else
            {
+               //fprintf(stddebug, "\nLOG: Mutex held, yielding thread %ld", thread->threadID);
                sigemptyset(&newset);
+               sigprocmask(SIG_SETMASK, &newset, NULL);
                gtthread_yield();
            }
 
+        sigaddset(&newset, SIGVTALRM);
+        sigprocmask(SIG_SETMASK, &newset, NULL);
+        
        }
 
-       fprintf(stddebug, "\nLOG: Mutex %d being acquired by thread %ld", mutex->mutexID, thread->threadID);
+       //fprintf(stddebug, "\nLOG: Mutex %d being acquired by thread %ld", mutex->mutexID, thread->threadID);
        
         appendMutex(&(thread->ownedMutexes), mutex);
         mutex->threadID = thread->threadID;
@@ -517,7 +530,7 @@ int  gtthread_mutex_lock(gtthread_mutex_t *mutex)
     }
     else
     { 
-       fprintf(stddebug, "\nLOG: Mutex %d being acquired by thread %ld", mutex->mutexID, thread->threadID);
+       //fprintf(stddebug, "\nLOG: Mutex %d being acquired by thread %ld", mutex->mutexID, thread->threadID);
        
        appendMutex(&(thread->ownedMutexes), mutex);
        mutex->threadID =  thread->threadID;
@@ -525,6 +538,7 @@ int  gtthread_mutex_lock(gtthread_mutex_t *mutex)
     } 
    
     sigemptyset(&newset);
+    sigprocmask(SIG_SETMASK, &newset, NULL);
 
     return returnValue;
    //Signaling mask ends
@@ -552,17 +566,18 @@ int  gtthread_mutex_unlock(gtthread_mutex_t *mutex)
     }
     else if(thread->threadID != mutex->threadID)
     {
-        fprintf(stddebug, "\nLOG:Thread %ld trying to unlock a mutex %d it does not own", thread->threadID, mutex->mutexID);
+        //fprintf(stddebug, "\nLOG:Thread %ld trying to unlock a mutex %d it does not own", thread->threadID, mutex->mutexID);
         returnValue = 1;
     }
     else if(thread->threadID == mutex->threadID)
     {
-        fprintf(stddebug, "\nLOG: Thread %ld unlocking a mutex %d that it owns", thread->threadID, mutex->mutexID);
+        //fprintf(stddebug, "\nLOG: Thread %ld unlocking a mutex %d that it owns", thread->threadID, mutex->mutexID);
         mutex->threadID = INIT_THREAD_ID;
         //deleteMutex(&(thread->ownedMutexes), mutex->mutexID); 
     }
 
-    sigemptyset(&newset);  
+    sigemptyset(&newset);
+    sigprocmask(SIG_SETMASK, &newset,NULL);  
     //signal ends here
 }
 

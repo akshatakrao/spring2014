@@ -99,8 +99,6 @@ int main()
     gtthread_t threads[NO_OF_PHILOSOPHERS];
     int i = 0;
 
-    gtthread_init(500);	
-
     for(i = 0; i < NO_OF_PHILOSOPHERS; i++)
     {
         threads[i] = (gtthread_t*)malloc(sizeof(gtthread_t));
